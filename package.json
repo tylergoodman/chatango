@@ -1,0 +1,27 @@
+{
+  "name": "chatango",
+  "version": "0.0.1",
+  "description": "library for interacting with Chatango.com",
+  "private": true,
+  "main": "./dist/index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "./node_modules/.bin/gulp test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tylergoodman/chatango.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tylergoodman/chatango/issues"
+  },
+  "homepage": "https://github.com/tylergoodman/chatango",
+  "devDependencies": {
+    "gulp": "^3.8.11",
+    "gulp-typescript": "^2.6.0",
+    "merge2": "^0.3.5",
+    "run-sequence": "^1.1.0"
+  }
+}
