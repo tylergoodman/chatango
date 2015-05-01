@@ -7,9 +7,13 @@ var __extends = this.__extends || function (d, b) {
 var events = require('events');
 var Connection = (function (_super) {
     __extends(Connection, _super);
-    function Connection() {
+    function Connection(user) {
         _super.call(this);
+        this.user = user;
     }
+    Connection.prototype.connect = function () {
+        this.user.username = "CONNECTED";
+    };
     return Connection;
 })(events.EventEmitter);
-exports.Connection = Connection;
+module.exports = Connection;

@@ -1,5 +1,11 @@
-/// <reference path="node.d.ts" />
+/// <reference path="definitions/node.d.ts" />
 import events = require('events');
-export declare class Connection extends events.EventEmitter {
-    constructor();
+import net = require('net');
+import User = require('./User');
+declare class Connection extends events.EventEmitter {
+    user: User;
+    socket: net.Socket;
+    constructor(user: User);
+    connect(): void;
 }
+export = Connection;

@@ -9,6 +9,7 @@ gulp.task('build', function () {
       'module': 'commonjs',
       'removeComments': true,
       'declarationFiles': true,
+      'target': 'ES5',
     }));
     return merge([
       pipe.dts.pipe(gulp.dest('./dist')),

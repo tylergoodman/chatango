@@ -1,3 +1,1 @@
-declare class Chatango {
-    Connection: any;
-}
+/// <reference path="definitions/node.d.ts" />
