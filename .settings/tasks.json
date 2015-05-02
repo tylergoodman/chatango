@@ -16,6 +16,15 @@
                 "$tsc",
                 "$jshint"
             ]
+        },
+        {
+            "taskName": "test",
+            "args": [],
+            "isTestCommand": true
+        },
+        {
+            "taskName": "clean",
+            "args": []
         }
     ]
 }

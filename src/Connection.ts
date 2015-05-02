@@ -1,33 +1,97 @@
-/// <reference path="definitions/node.d.ts" />
+/// <reference path="../typings/node.d.ts" />
+/// <reference path="../typings/winston.d.ts" />
+/// <reference path="../typings/bluebird.d.ts" />
 
 import events = require('events');
 import net = require('net');
-
-import User = require('./User');
-import Room = require('./Room');
+import winston = require('winston');
+import Promise = require('bluebird');
 
 class Connection extends events.EventEmitter {
-  user: User;
-  room: Room;
-  
   socket: net.Socket;
-  connected: Boolean = false;
-  reconnecting: Boolean = false;
+  auto_reconnect: Boolean = false;
+  
+  host: string;
+  port: number;
 
-  constructor(user: User, room: Room) {
+  get address(): string {
+    return `${this.host}:${this.port}`;
+  }
+
+  constructor(host: string, port: number = 443) {
     super();
-    this.user = user;
-    this.room = room;
+
+    this.host = host;
+    this.port = port;
 
     this.socket = new net.Socket({
       readable: true,
       writeable: true,
     });
-    
+
+    this.init();
   }
-  connect(port:number = 443): Connection {
-    
+  init() {
+    this.socket.setEncoding('utf8');
+
+    this.socket.on('connect', () => {
+      winston.log('verbose', `Connected to ${this.address}`);
+      this.emit('connect');
+    });
+
+    this.socket.on('data', (data: string) => {
+      winston.log('silly', `Received data: "${data}"`);
+      this.emit('data', data);
+    });
+
+    this.socket.on('end', () => {
+      winston.log('verbose', `Received FIN packet from ${this.address}`);
+      this.emit('end');
+    });
+
+    this.socket.on('timeout', () => {
+      winston.log('warn', `${this.address} timeout`);
+      this.emit('timeout');
+    });
+
+    this.socket.on('drain', () => {
+      this.emit('drain');
+    });
+
+    this.socket.on('error', (err: Error) => {
+      winston.log('error', `Error on connection to ${this.address}: ${err}`);
+      this.auto_reconnect = false;
+      this.emit('error');
+    });
+
+    this.socket.on('close', () => {
+      winston.log('verbose', `Connection to ${this.address} closed`);
+      this.emit('close');
+      if (this.auto_reconnect) {
+        winston.log('verbose', `Attempting to reconnect to ${this.address}`);
+        this.connect();
+      }
+    });
+  }
+  connect(port: number = this.port): Promise<{}> {
+    winston.log('verbose', `Connecting to ${this.address}`);
+    return new Promise((resolve, reject) => {
+      this.socket.connect(this.port, this.host, resolve);
+    });
+  }
+  disconnect(hard: Boolean = false): Connection {
+    winston.log('verbose', `Ending connection to ${this.address}`);
+    if (hard)
+      this.socket.destroy();
+    else
+      this.socket.end();
     return this;
+  }
+  send(data: string): Promise<{}> {
+    return new Promise((resolve, reject) => {
+      winston.log('silly', `Sending data to ${this.address}: "${data}"`);
+      this.socket.write(data, resolve);
+    }); 
   }
 }
 

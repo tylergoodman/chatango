@@ -1,4 +1,4 @@
-/// <reference path="definitions/node.d.ts" />
+/// <reference path="../typings/node.d.ts" />
 
 module.exports = {
   Connection: require('./Connection'),
