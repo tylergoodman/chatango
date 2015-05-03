@@ -15,10 +15,11 @@ gulp.task('clean', function (done) {
 gulp.task('build', ['clean'], function () {
   var pipe = gulp.src('./src/*.ts')
     .pipe(ts({
-      'module': 'commonjs',
-      'removeComments': true,
-      'declarationFiles': true,
-      'target': 'ES5',
+      module: 'commonjs',
+      removeComments: true,
+      declarationFiles: true,
+      target: 'ES5',
+      typescript: require('typescript'),
     }));
   return merge([
     pipe.dts.pipe(gulp.dest('./dist')),

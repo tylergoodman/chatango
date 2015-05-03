@@ -1,3 +1,6 @@
+/// <reference path="../typings/node.d.ts" />
+/// <reference path="../typings/winston.d.ts" />
+/// <reference path="../typings/bluebird.d.ts" />
 var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -11,8 +14,10 @@ var Promise = require('bluebird');
 var Connection = (function (_super) {
     __extends(Connection, _super);
     function Connection(host, port) {
+        var _this = this;
         if (port === void 0) { port = 443; }
         _super.call(this);
+        this.connected = false;
         this.auto_reconnect = false;
         this.host = host;
         this.port = port;
@@ -20,17 +25,6 @@ var Connection = (function (_super) {
             readable: true,
             writeable: true,
         });
-        this.init();
-    }
-    Object.defineProperty(Connection.prototype, "address", {
-        get: function () {
-            return "" + this.host + ":" + this.port;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Connection.prototype.init = function () {
-        var _this = this;
         this.socket.setEncoding('utf8');
         this.socket.on('connect', function () {
             winston.log('verbose', "Connected to " + _this.address);
@@ -45,7 +39,7 @@ var Connection = (function (_super) {
             _this.emit('end');
         });
         this.socket.on('timeout', function () {
-            winston.log('warn', "" + _this.address + " timeout");
+            winston.log('warn', _this.address + " timeout");
             _this.emit('timeout');
         });
         this.socket.on('drain', function () {
@@ -64,7 +58,14 @@ var Connection = (function (_super) {
                 _this.connect();
             }
         });
-    };
+    }
+    Object.defineProperty(Connection.prototype, "address", {
+        get: function () {
+            return this.host + ":" + this.port;
+        },
+        enumerable: true,
+        configurable: true
+    });
     Connection.prototype.connect = function (port) {
         var _this = this;
         if (port === void 0) { port = this.port; }
@@ -85,6 +86,11 @@ var Connection = (function (_super) {
     Connection.prototype.send = function (data) {
         var _this = this;
         return new Promise(function (resolve, reject) {
+            if (!_this.connected) {
+                var error = "Couldn't send data to " + _this.address + ": not connected";
+                winston.log('error', error);
+                return reject(new Error(error));
+            }
             winston.log('silly', "Sending data to " + _this.address + ": \"" + data + "\"");
             _this.socket.write(data, resolve);
         });

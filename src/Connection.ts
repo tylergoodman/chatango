@@ -9,7 +9,8 @@ import Promise = require('bluebird');
 
 class Connection extends events.EventEmitter {
   socket: net.Socket;
-  auto_reconnect: Boolean = false;
+  connected: boolean = false;
+  auto_reconnect: boolean = false;
   
   host: string;
   port: number;
@@ -29,9 +30,6 @@ class Connection extends events.EventEmitter {
       writeable: true,
     });
 
-    this.init();
-  }
-  init() {
     this.socket.setEncoding('utf8');
 
     this.socket.on('connect', () => {
@@ -89,6 +87,11 @@ class Connection extends events.EventEmitter {
   }
   send(data: string): Promise<{}> {
     return new Promise((resolve, reject) => {
+      if (!this.connected) {
+        var error = `Couldn't send data to ${this.address}: not connected`;
+        winston.log('error', error);
+        return reject(new Error(error));
+      }
       winston.log('silly', `Sending data to ${this.address}: "${data}"`);
       this.socket.write(data, resolve);
     }); 

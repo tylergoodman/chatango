@@ -1,21 +1,96 @@
 /// <reference path="../typings/lodash.d.ts" />
 
+import events = require('events');
 import _ = require('lodash');
+import Promise = require('bluebird');
+import winston = require('winston');
 
 import User = require('./User');
 import Connection = require('./Connection');
 
-class Room {
+class Room extends events.EventEmitter {
   name: string;
   user: User;
   users: User[];
   connection: Connection;
 
+  buffer: string = '';
+  firstSend: boolean = true;
+  has_init: boolean = false;
+
   constructor(name: string, user: User) {
+    super();
+
     this.name = name;
     this.user = user;
-    
+
     this.connection = new Connection(this.getServer(this.name));
+
+    this.connection.on('data', this.receiveData);
+
+    this.connection.on('close', () => {
+      winston.log('verbose', `Lost connection to ${this.name}`);
+      this.buffer = '';
+      this.firstSend = true;
+      this.has_init = false;
+    });
+  }
+
+  join(): Room {
+    this.connection
+      .connect()
+      .then(() => {
+        return new Promise((resolve, reject) => {
+          this.authenticate();
+          this.once('join', resolve);
+        });
+      })
+    return this;
+  }
+
+  send(command: string): Room;
+  send(command: string[]): Room;
+  send(command: any): Room {
+    if (typeof command == 'array') {
+      command = command.join(':');
+    }
+    if (this.firstSend) {
+      command += '\r\n';
+      this.firstSend = false;
+    }
+    command += '\0';
+    winston.log('silly', `Sending command to ${this.name}: "${command}"`);
+    this.connection.send(command);
+    return this;
+  }
+
+  private authenticate(): void {
+    
+  }
+
+  private commands = {
+  }
+
+  private receiveData(data: string) {
+    this.buffer += data;
+    var commands: string[] = this.buffer.split('\0');
+    if (commands[commands.length - 1] !== '') {
+      this.buffer = commands.pop();
+    }
+    else {
+      commands.pop();
+      this.buffer = '';
+    }
+    winston.log('silly', `Received commands: ${commands}`);
+    for (var i = 0; i < commands.length; i++) {
+      var [command, ...args] = commands[i].split(':');
+      if (this.commands.hasOwnProperty(command)) {
+        this.commands[command](args);
+      }
+      else {
+        winston.log('warn', `Received command that has no handler: ${command}`);
+      }
+    }
   }
 
   private getServer(room_name: string): string {
