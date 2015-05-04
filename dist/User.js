@@ -1,21 +1,17 @@
-var UserType;
-(function (UserType) {
-    UserType[UserType["Anonymous"] = 0] = "Anonymous";
-    UserType[UserType["Temporary"] = 1] = "Temporary";
-    UserType[UserType["Registered"] = 2] = "Registered";
-})(UserType || (UserType = {}));
 var User = (function () {
     function User(username, password) {
-        this.username = '';
-        this.password = '';
+        if (username === void 0) { username = ''; }
+        if (password === void 0) { password = ''; }
+        this.username = username;
+        this.password = password;
         if (!username && !password) {
-            this.type = UserType.Anonymous;
+            this.type = User.types.Anonymous;
         }
         else if (!password) {
-            this.type = UserType.Temporary;
+            this.type = User.types.Temporary;
         }
         else {
-            this.type = UserType.Registered;
+            this.type = User.types.Registered;
         }
     }
     Object.defineProperty(User.prototype, "info", {
@@ -25,7 +21,15 @@ var User = (function () {
         enumerable: true,
         configurable: true
     });
-    User.Types = UserType;
     return User;
 })();
+var User;
+(function (User) {
+    (function (types) {
+        types[types["Anonymous"] = 0] = "Anonymous";
+        types[types["Temporary"] = 1] = "Temporary";
+        types[types["Registered"] = 2] = "Registered";
+    })(User.types || (User.types = {}));
+    var types = User.types;
+})(User || (User = {}));
 module.exports = User;

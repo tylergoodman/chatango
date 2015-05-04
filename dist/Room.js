@@ -9,6 +9,7 @@ var events = require('events');
 var _ = require('lodash');
 var Promise = require('bluebird');
 var winston = require('winston');
+var User = require('./User');
 var Connection = require('./Connection');
 var Room = (function (_super) {
     __extends(Room, _super);
@@ -16,46 +17,88 @@ var Room = (function (_super) {
         var _this = this;
         _super.call(this);
         this.buffer = '';
+        this.sessionid = '';
         this.firstSend = true;
         this.has_init = false;
-        this.commands = {};
         this.name = name;
         this.user = user;
         this.connection = new Connection(this.getServer(this.name));
-        this.connection.on('data', this.receiveData);
+        this.connection.on('data', function (data) {
+            _this.receiveData(data);
+        });
+        this.connection.on('connect', function () {
+            winston.log('verbose', "Connected to room " + _this.name);
+        });
         this.connection.on('close', function () {
-            winston.log('verbose', "Lost connection to " + _this.name);
+            winston.log('verbose', "Disconnected from room " + _this.name);
             _this.buffer = '';
             _this.firstSend = true;
             _this.has_init = false;
+            _this.emit('leave');
         });
     }
     Room.prototype.join = function () {
         var _this = this;
-        this.connection
+        winston.log('verbose', "Connecting to room " + this.name);
+        return this.connection
             .connect()
             .then(function () {
             return new Promise(function (resolve, reject) {
-                _this.authenticate();
-                _this.once('join', resolve);
+                _this.once('init', resolve);
+                _this.send("bauth:" + _this.name + ":" + _this.sessionid + "::");
             });
+        })
+            .then(function () {
+            return _this.authenticate();
         });
-        return this;
+    };
+    Room.prototype.leave = function () {
+        var _this = this;
+        return new Promise(function (resolve, reject) {
+            winston.log('verbose', "Disconnecting from room " + _this.name);
+            _this.connection.disconnect();
+            _this.connection.once('close', resolve);
+        });
     };
     Room.prototype.send = function (command) {
-        if (typeof command == 'array') {
+        if (_.isArray(command)) {
             command = command.join(':');
         }
-        if (this.firstSend) {
+        if (!this.firstSend) {
             command += '\r\n';
-            this.firstSend = false;
         }
+        this.firstSend = false;
         command += '\0';
-        winston.log('silly', "Sending command to " + this.name + ": \"" + command + "\"");
+        winston.log('verbose', "Sending command to room " + this.name + ": \"" + command + "\"");
         this.connection.send(command);
         return this;
     };
     Room.prototype.authenticate = function () {
+        var _this = this;
+        return new Promise(function (resolve, reject) {
+            if (_this.user.type === User.types.Anonymous)
+                return resolve({});
+            if (_this.user.type === User.types.Temporary)
+                _this.send("blogin:" + _this.user.username);
+            if (_this.user.type === User.types.Registered)
+                _this.send("blogin:" + _this.user.username + ":" + _this.user.password);
+            _this.once('join', resolve);
+        });
+    };
+    Room.prototype.handleCommand = function (command, args) {
+        winston.log('verbose', "Received <" + command + "> command from " + this.name);
+        switch (command) {
+            case 'inited':
+                this.emit('init');
+                break;
+            case 'pwdok':
+            case 'aliasok':
+                this.emit('join');
+                break;
+            default:
+                winston.log('warn', "Received command that has no handler: " + command);
+                break;
+        }
     };
     Room.prototype.receiveData = function (data) {
         this.buffer += data;
@@ -70,12 +113,7 @@ var Room = (function (_super) {
         winston.log('silly', "Received commands: " + commands);
         for (var i = 0; i < commands.length; i++) {
             var _a = commands[i].split(':'), command = _a[0], args = _a.slice(1);
-            if (this.commands.hasOwnProperty(command)) {
-                this.commands[command](args);
-            }
-            else {
-                winston.log('warn', "Received command that has no handler: " + command);
-            }
+            this.handleCommand(command, args);
         }
     };
     Room.prototype.getServer = function (room_name) {
@@ -104,8 +142,8 @@ var Room = (function (_super) {
         var num = (fnv % lnv) / lnv;
         var maxnum = _.sum(tsweights.map(function (n) { return n[1]; }));
         var cumfreq = 0;
-        var sn = 0;
-        for (var weight in tsweights) {
+        for (var i = 0; i < tsweights.length; i++) {
+            var weight = tsweights[i];
             cumfreq += weight[1] / maxnum;
             if (num <= cumfreq) {
                 return "s" + weight[0] + ".chatango.com";

@@ -1,34 +1,44 @@
 
-enum UserType {
-  Anonymous,
-  Temporary,
-  Registered,
-}
 
 class User {
-  username: string = '';
-  password: string = '';
-  type: UserType = User.types.Anonymous;
+  username: string;
+  password: string;
+  type: User.types;
 
-  static types = UserType;
+//  static enum types {
+//    Anonymous,
+//    Temporary,
+//    Registered,
+//  }
 
   get info() {
     return this.password;
   }
 
-  constructor(username?: string, password?: string) {
-    
+  constructor(username: string = '', password: string = '') {
+    this.username = username;
+    this.password = password;
+
     if (!username && !password) {
-      this.type = UserType.Anonymous;
+      this.type = User.types.Anonymous;
     }
     else if (!password) {
-      this.type = UserType.Temporary;
+      this.type = User.types.Temporary;
     }
     else {
-      this.type = UserType.Registered;
+      this.type = User.types.Registered;
     }
   }
 
+}
+
+// typescript pls
+module User {
+  export enum types {
+    Anonymous,
+    Temporary,
+    Registered,
+  }
 }
 
 export = User;

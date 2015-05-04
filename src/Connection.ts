@@ -33,6 +33,7 @@ class Connection extends events.EventEmitter {
     this.socket.setEncoding('utf8');
 
     this.socket.on('connect', () => {
+      this.connected = true;
       winston.log('verbose', `Connected to ${this.address}`);
       this.emit('connect');
     });
@@ -63,6 +64,7 @@ class Connection extends events.EventEmitter {
     });
 
     this.socket.on('close', () => {
+      this.connected = false;
       winston.log('verbose', `Connection to ${this.address} closed`);
       this.emit('close');
       if (this.auto_reconnect) {

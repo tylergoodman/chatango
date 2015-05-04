@@ -8,6 +8,7 @@ winston.cli();
 
 describe('Connection', function () {
   var Connection = require('../dist/Connection');
+
   it('#connect', function (done) {
     var conn = new Connection('s30.chatango.com');
     conn
@@ -26,4 +27,18 @@ describe('Connection', function () {
 
 describe('Room', function () {
   var Room = require('../dist/Room');
+  var User = require('../dist/User');
+
+  it('#join', function (done) {
+    var user = new User;
+    var room = new Room('1635132', user);
+    room
+      .join()
+      .then(function () {
+        return room.leave();
+      })
+      .then(function () {
+        done()
+      });
+  });
 });
