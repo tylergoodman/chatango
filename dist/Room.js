@@ -1,4 +1,4 @@
-/// <reference path="../typings/lodash.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -23,11 +23,9 @@ var Room = (function (_super) {
         this.name = name;
         this.user = user;
         this.connection = new Connection(this.getServer(this.name));
-        this.connection.on('data', function (data) {
-            _this.receiveData(data);
-        });
+        this.connection.on('data', this.receiveData.bind(this));
         this.connection.on('connect', function () {
-            winston.log('verbose', "Connected to room " + _this.name);
+            winston.log('info', "Connected to room " + _this.name);
         });
         this.connection.on('close', function () {
             winston.log('verbose', "Disconnected from room " + _this.name);
@@ -73,14 +71,17 @@ var Room = (function (_super) {
         this.connection.send(command);
         return this;
     };
+    Room.prototype.sendMessage = function (content) {
+        return this;
+    };
     Room.prototype.authenticate = function () {
         var _this = this;
         return new Promise(function (resolve, reject) {
-            if (_this.user.type === User.types.Anonymous)
-                return resolve({});
-            if (_this.user.type === User.types.Temporary)
+            if (_this.user.type === User.Type.Anonymous)
+                return resolve(undefined);
+            if (_this.user.type === User.Type.Temporary)
                 _this.send("blogin:" + _this.user.username);
-            if (_this.user.type === User.types.Registered)
+            if (_this.user.type === User.Type.Registered)
                 _this.send("blogin:" + _this.user.username + ":" + _this.user.password);
             _this.once('join', resolve);
         });

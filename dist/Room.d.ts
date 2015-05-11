@@ -1,4 +1,4 @@
-/// <reference path="../typings/lodash.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 import events = require('events');
 import Promise = require('bluebird');
 import User = require('./User');
@@ -13,10 +13,11 @@ declare class Room extends events.EventEmitter {
     firstSend: boolean;
     has_init: boolean;
     constructor(name: string, user: User);
-    join(): Promise<{}>;
-    leave(): Promise<{}>;
+    join(): Promise<void>;
+    leave(): Promise<boolean>;
     send(command: string): Room;
     send(command: string[]): Room;
+    sendMessage(content: string): Room;
     private authenticate();
     private handleCommand(command, args);
     private receiveData(data);

@@ -1,6 +1,4 @@
-/// <reference path="../typings/node.d.ts" />
-/// <reference path="../typings/winston.d.ts" />
-/// <reference path="../typings/bluebird.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -49,12 +47,12 @@ var Connection = (function (_super) {
         this.socket.on('error', function (err) {
             winston.log('error', "Error on connection to " + _this.address + ": " + err);
             _this.auto_reconnect = false;
-            _this.emit('error');
+            _this.emit('error', err);
         });
-        this.socket.on('close', function () {
+        this.socket.on('close', function (had_error) {
             _this.connected = false;
             winston.log('verbose', "Connection to " + _this.address + " closed");
-            _this.emit('close');
+            _this.emit('close', had_error);
             if (_this.auto_reconnect) {
                 winston.log('verbose', "Attempting to reconnect to " + _this.address);
                 _this.connect();

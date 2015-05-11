@@ -31,6 +31,17 @@
   "dependencies": {
     "bluebird": "^2.9.25",
     "lodash": "^3.8.0",
-    "winston": "^1.0.0"
+    "request": "^2.55.0",
+    "winston": "^1.0.0",
+    "xml2js": "^0.4.8"
+  },
+  "typescript": {
+    "definitions": [
+      "dist/index.d.ts",
+      "dist/Connnection.d.ts",
+      "dist/Message.d.ts",
+      "dist/Room.d.ts",
+      "dist/User.d.ts"
+    ]
   }
 }

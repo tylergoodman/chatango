@@ -1,4 +1,4 @@
-/// <reference path="../typings/lodash.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 
 import events = require('events');
 import util = require('util');
@@ -28,12 +28,10 @@ class Room extends events.EventEmitter {
 
     this.connection = new Connection(this.getServer(this.name));
 
-    this.connection.on('data', (data) => {
-      this.receiveData(data) 
-    });
+    this.connection.on('data', this.receiveData.bind(this));
 
     this.connection.on('connect', () => {
-      winston.log('verbose', `Connected to room ${this.name}`);
+      winston.log('info', `Connected to room ${this.name}`);
     });
 
     this.connection.on('close', () => {
@@ -45,12 +43,12 @@ class Room extends events.EventEmitter {
     });
   }
 
-  join(): Promise<{}> {
+  join(): Promise<void> {
     winston.log('verbose', `Connecting to room ${this.name}`);
     return this.connection
       .connect()
       .then(() => {
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
           this.once('init', resolve);
           this.send(`bauth:${this.name}:${this.sessionid}::`);
         })
@@ -60,8 +58,8 @@ class Room extends events.EventEmitter {
       });
   }
 
-  leave(): Promise<{}> {
-    return new Promise((resolve, reject) => {
+  leave(): Promise<boolean> {
+    return new Promise<boolean>((resolve, reject) => {
       winston.log('verbose', `Disconnecting from room ${this.name}`);
       this.connection.disconnect();
       this.connection.once('close', resolve);
@@ -84,15 +82,22 @@ class Room extends events.EventEmitter {
     return this;
   }
 
-  private authenticate(): Promise<{}> {
-    return new Promise((resolve, reject) => {
-      if (this.user.type === User.types.Anonymous)
-        return resolve({});
+  sendMessage(content: string): Room {
+//    var message = `<n{nameColor}/><f x{fontSize}{fontColor}="{fontFace}">{contents}`;
+//
+//    this.send(['bm', Math.round(15E5 * Math.random()).toString(36), '0', message]);
+    return this;
+  }
 
-      if (this.user.type === User.types.Temporary)
+  private authenticate(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      if (this.user.type === User.Type.Anonymous)
+        return resolve(undefined);
+
+      if (this.user.type === User.Type.Temporary)
         this.send(`blogin:${this.user.username}`);
 
-      if (this.user.type === User.types.Registered)
+      if (this.user.type === User.Type.Registered)
         this.send(`blogin:${this.user.username}:${this.user.password}`);
 
       this.once('join', resolve);
@@ -115,7 +120,7 @@ class Room extends events.EventEmitter {
     }
   }
 
-  private receiveData(data: string) {
+  private receiveData(data: string): void {
     this.buffer += data;
     var commands: string[] = this.buffer.split('\0');
     if (commands[commands.length - 1] !== '') {

@@ -5,7 +5,7 @@
 
 // Imported from: https://github.com/soywiz/typescript-node-definitions/winston.d.ts
 
-/// <reference path="./node.d.ts" />
+/// <reference path="../node/node.d.ts" />
 
 declare module "winston" {
 
@@ -61,9 +61,6 @@ declare module "winston" {
 
     debug(msg: string, meta: any, callback?: (err: Error, level: string, msg: string, meta: any) => void): LoggerInstance;
     debug(msg: string, callback?: (err: Error, level: string, msg: string, meta: any) => void): LoggerInstance;
-
-    verbose(msg: string, meta: any, callback?: (err: Error, level: string, msg: string, meta: any) => void): LoggerInstance;
-    verbose(msg: string, callback?: (err: Error, level: string, msg: string, meta: any) => void): LoggerInstance;
 
     info(msg: string, meta: any, callback?: (err: Error, level: string, msg: string, meta: any) => void): LoggerInstance;
     info(msg: string, callback?: (err: Error, level: string, msg: string, meta: any) => void): LoggerInstance;

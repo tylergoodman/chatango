@@ -1,6 +1,4 @@
-/// <reference path="../typings/node.d.ts" />
-/// <reference path="../typings/winston.d.ts" />
-/// <reference path="../typings/bluebird.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 
 import events = require('events');
 import net = require('net');
@@ -60,22 +58,22 @@ class Connection extends events.EventEmitter {
     this.socket.on('error', (err: Error) => {
       winston.log('error', `Error on connection to ${this.address}: ${err}`);
       this.auto_reconnect = false;
-      this.emit('error');
+      this.emit('error', err);
     });
 
-    this.socket.on('close', () => {
+    this.socket.on('close', (had_error: boolean) => {
       this.connected = false;
       winston.log('verbose', `Connection to ${this.address} closed`);
-      this.emit('close');
+      this.emit('close', had_error);
       if (this.auto_reconnect) {
         winston.log('verbose', `Attempting to reconnect to ${this.address}`);
         this.connect();
       }
     });
   }
-  connect(port: number = this.port): Promise<{}> {
+  connect(port: number = this.port): Promise<void> {
     winston.log('verbose', `Connecting to ${this.address}`);
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       this.socket.connect(this.port, this.host, resolve);
     });
   }
@@ -87,8 +85,8 @@ class Connection extends events.EventEmitter {
       this.socket.end();
     return this;
   }
-  send(data: string): Promise<{}> {
-    return new Promise((resolve, reject) => {
+  send(data: string): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
       if (!this.connected) {
         var error = `Couldn't send data to ${this.address}: not connected`;
         winston.log('error', error);

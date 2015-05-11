@@ -98,7 +98,7 @@ declare module _ {
     **/
     interface Support {
         /**
-        * Detect if an arguments object’s [[Class]] is resolvable (all but Firefox < 4, IE < 9).
+        * Detect if an arguments object's [[Class]] is resolvable (all but Firefox < 4, IE < 9).
         **/
         argsClass: boolean;
 
@@ -258,7 +258,7 @@ declare module _ {
     //_.chunk
     interface LoDashStatic {
         /**
-        * Creates an array of elements split into groups the length of size. If collection can’t be
+        * Creates an array of elements split into groups the length of size. If collection can't be
         * split evenly, the final chunk will be the remaining elements.
         * @param array The array to process.
         * @param size The length of each chunk.
@@ -287,12 +287,12 @@ declare module _ {
         * @param array Array to compact.
         * @return (Array) Returns a new array of filtered values.
         **/
-        compact<T>(array: Array<T>): T[];
+        compact<T>(array?: Array<T>): T[];
 
         /**
         * @see _.compact
         **/
-        compact<T>(array: List<T>): T[];
+        compact<T>(array?: List<T>): T[];
     }
 
     interface LoDashArrayWrapper<T> {
@@ -312,13 +312,13 @@ declare module _ {
         * @return Returns a new array of filtered values.
         **/
         difference<T>(
-            array: Array<T>,
+            array?: Array<T>,
             ...others: Array<T>[]): T[];
         /**
         * @see _.difference
         **/
         difference<T>(
-            array: List<T>,
+            array?: List<T>,
             ...others: List<T>[]): T[];
     }
 
@@ -456,12 +456,12 @@ declare module _ {
         * @param array Retrieves the first element of this array.
         * @return Returns the first element of `array`.
         **/
-        first<T>(array: Array<T>): T;
+        first<T>(array?: Array<T>): T;
 
         /**
         * @see _.first
         **/
-        first<T>(array: List<T>): T;
+        first<T>(array?: List<T>): T;
 
         /**
         * @see _.first
@@ -2253,7 +2253,7 @@ declare module _ {
         **/
         countBy<T>(
             collection: Dictionary<T>,
-            callback?: ListIterator<T, any>,
+            callback?: DictionaryIterator<T, any>,
             thisArg?: any): Dictionary<number>;
 
         /**
@@ -2338,7 +2338,7 @@ declare module _ {
         **/
         every<T>(
             collection: Dictionary<T>,
-            callback?: ListIterator<T, boolean>,
+            callback?: DictionaryIterator<T, boolean>,
             thisArg?: any): boolean;
 
         /**
@@ -2410,7 +2410,7 @@ declare module _ {
         **/
         all<T>(
             collection: Dictionary<T>,
-            callback?: ListIterator<T, boolean>,
+            callback?: DictionaryIterator<T, boolean>,
             thisArg?: any): boolean;
 
         /**
@@ -2497,7 +2497,7 @@ declare module _ {
         **/
         filter<T>(
             collection: Dictionary<T>,
-            callback: ListIterator<T, boolean>,
+            callback: DictionaryIterator<T, boolean>,
             thisArg?: any): T[];
 
         /**
@@ -2569,7 +2569,7 @@ declare module _ {
         **/
         select<T>(
             collection: Dictionary<T>,
-            callback: ListIterator<T, boolean>,
+            callback: DictionaryIterator<T, boolean>,
             thisArg?: any): T[];
 
         /**
@@ -2709,7 +2709,7 @@ declare module _ {
         **/
         find<T>(
             collection: Dictionary<T>,
-            callback: ListIterator<T, boolean>,
+            callback: DictionaryIterator<T, boolean>,
             thisArg?: any): T;
 
         /**
@@ -2781,7 +2781,7 @@ declare module _ {
         **/
         detect<T>(
             collection: Dictionary<T>,
-            callback: ListIterator<T, boolean>,
+            callback: DictionaryIterator<T, boolean>,
             thisArg?: any): T;
 
         /**
@@ -2853,7 +2853,7 @@ declare module _ {
         **/
         findWhere<T>(
             collection: Dictionary<T>,
-            callback: ListIterator<T, boolean>,
+            callback: DictionaryIterator<T, boolean>,
             thisArg?: any): T;
 
         /**
@@ -2955,7 +2955,7 @@ declare module _ {
         **/
         findLast<T>(
             collection: Dictionary<T>,
-            callback: ListIterator<T, boolean>,
+            callback: DictionaryIterator<T, boolean>,
             thisArg?: any): T;
 
         /**
@@ -3057,7 +3057,7 @@ declare module _ {
         **/
         forEach<T extends {}>(
             object: Dictionary<T>,
-            callback: ObjectIterator<T, void>,
+            callback: DictionaryIterator<T, void>,
             thisArg?: any): Dictionary<T>;
 
         /**
@@ -3092,7 +3092,7 @@ declare module _ {
         **/
         each<T extends {}>(
             object: Dictionary<T>,
-            callback: ObjectIterator<T, void>,
+            callback: DictionaryIterator<T, void>,
             thisArg?: any): Dictionary<T>;
 
         /**
@@ -3163,7 +3163,7 @@ declare module _ {
         **/
         forEachRight<T extends {}>(
             object: Dictionary<T>,
-            callback: ObjectIterator<T, void>,
+            callback: DictionaryIterator<T, void>,
             thisArg?: any): Dictionary<T>;
 
         /**
@@ -3190,7 +3190,7 @@ declare module _ {
         **/
         eachRight<T extends {}>(
             object: Dictionary<T>,
-            callback: ObjectIterator<T, void>,
+            callback: DictionaryIterator<T, void>,
             thisArg?: any): Dictionary<T>;
     }
 
@@ -3296,7 +3296,7 @@ declare module _ {
         **/
         groupBy<T>(
             collection: Dictionary<T>,
-            callback?: ListIterator<T, any>,
+            callback?: DictionaryIterator<T, any>,
             thisArg?: any): Dictionary<T[]>;
 
         /**
@@ -3518,7 +3518,7 @@ declare module _ {
         **/
         map<T extends {}, TResult>(
             object: Dictionary<T>,
-            callback: ObjectIterator<T, TResult>,
+            callback: DictionaryIterator<T, TResult>,
             thisArg?: any): TResult[];
 
         /**
@@ -3558,7 +3558,7 @@ declare module _ {
         **/
         collect<T extends {}, TResult>(
             object: Dictionary<T>,
-            callback: ObjectIterator<T, TResult>,
+            callback: DictionaryIterator<T, TResult>,
             thisArg?: any): TResult[];
 
         /**
@@ -3657,7 +3657,7 @@ declare module _ {
         **/
         max<T>(
             collection: Dictionary<T>,
-            callback?: ListIterator<T, any>,
+            callback?: DictionaryIterator<T, any>,
             thisArg?: any): T;
 
         /**
@@ -3730,6 +3730,11 @@ declare module _ {
         **/
         max<W>(
             whereValue: W): LoDashWrapper<T>;
+    }
+
+    //_.sum
+    interface LoDashStatic {
+        sum<T>(collection: Array<T>);
     }
 
     //_.min
@@ -3841,13 +3846,6 @@ declare module _ {
         **/
         min<W>(
             whereValue: W): LoDashWrapper<T>;
-    }
-    
-    //_.sum ;_;
-    interface LoDashStatic {
-        sum<T>(
-            collection: Array<T>
-        )
     }
 
     //_.pluck
@@ -4297,7 +4295,7 @@ declare module _ {
         **/
         reject<T>(
             collection: Dictionary<T>,
-            callback: ListIterator<T, boolean>,
+            callback: DictionaryIterator<T, boolean>,
             thisArg?: any): T[];
 
         /**
@@ -4508,7 +4506,7 @@ declare module _ {
         **/
         some<T>(
             collection: Dictionary<T>,
-            callback?: ListIterator<T, boolean>,
+            callback?: DictionaryIterator<T, boolean>,
             thisArg?: any): boolean;
 
         /**
@@ -4588,7 +4586,7 @@ declare module _ {
         **/
         any<T>(
             collection: Dictionary<T>,
-            callback?: ListIterator<T, boolean>,
+            callback?: DictionaryIterator<T, boolean>,
             thisArg?: any): boolean;
 
         /**
@@ -4840,7 +4838,7 @@ declare module _ {
         bind(
             func: Function,
             thisArg: any,
-            ...args: any[]): () => any;
+            ...args: any[]): (...args: any[]) => any;
     }
 
     interface LoDashObjectWrapper<T> {
@@ -4849,7 +4847,7 @@ declare module _ {
         **/
         bind(
             thisArg: any,
-            ...args: any[]): LoDashObjectWrapper<() => any>;
+            ...args: any[]): LoDashObjectWrapper<(...args: any[]) => any>;
     }
 
     //_.bindAll
@@ -5004,7 +5002,7 @@ declare module _ {
         * @param wait The number of milliseconds to delay.
         * @param options The options object.
         * @param options.leading Specify execution on the leading edge of the timeout.
-        * @param options.maxWait The maximum time func is allowed to be delayed before it’s called.
+        * @param options.maxWait The maximum time func is allowed to be delayed before it's called.
         * @param options.trailing Specify execution on the trailing edge of the timeout.
         * @return The new debounced function.
         **/
@@ -5030,7 +5028,7 @@ declare module _ {
         leading?: boolean;
 
         /**
-        * The maximum time func is allowed to be delayed before it’s called.
+        * The maximum time func is allowed to be delayed before it's called.
         **/
         maxWait?: number;
 
@@ -5531,7 +5529,7 @@ declare module _ {
         **/
         forIn<T>(
             object: Dictionary<T>,
-            callback?: ObjectIterator<T, void>,
+            callback?: DictionaryIterator<T, void>,
             thisArg?: any): Dictionary<T>;
 
         /**
@@ -5564,7 +5562,7 @@ declare module _ {
         **/
         forInRight<T extends {}>(
             object: Dictionary<T>,
-            callback?: ObjectIterator<T, void>,
+            callback?: DictionaryIterator<T, void>,
             thisArg?: any): Dictionary<T>;
 
         /**
@@ -5598,7 +5596,7 @@ declare module _ {
         **/
         forOwn<T extends {}>(
             object: Dictionary<T>,
-            callback?: ObjectIterator<T, void>,
+            callback?: DictionaryIterator<T, void>,
             thisArg?: any): Dictionary<T>;
 
         /**
@@ -5631,7 +5629,7 @@ declare module _ {
         **/
         forOwnRight<T extends {}>(
             object: Dictionary<T>,
-            callback?: ObjectIterator<T, void>,
+            callback?: DictionaryIterator<T, void>,
             thisArg?: any): Dictionary<T>;
         /**
         * @see _.forOwnRight
@@ -5708,7 +5706,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is an arguments object, else false.
         **/
-        isArguments(value: any): boolean;
+        isArguments(value?: any): boolean;
     }
 
     //_.isArray
@@ -5718,7 +5716,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is an array, else false.
         **/
-        isArray(value: any): boolean;
+        isArray(value?: any): boolean;
     }
 
     //_.isBoolean
@@ -5728,7 +5726,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is a boolean value, else false.
         **/
-        isBoolean(value: any): boolean;
+        isBoolean(value?: any): boolean;
     }
 
     //_.isDate
@@ -5738,7 +5736,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is a date, else false.
         **/
-        isDate(value: any): boolean;
+        isDate(value?: any): boolean;
     }
 
     //_.isElement
@@ -5748,7 +5746,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is a DOM element, else false.
         **/
-        isElement(value: any): boolean;
+        isElement(value?: any): boolean;
     }
 
     //_.isEmpty
@@ -5759,22 +5757,7 @@ declare module _ {
         * @param value The value to inspect.
         * @return True if the value is empty, else false.
         **/
-        isEmpty(value: any[]): boolean;
-
-        /**
-        * @see _.isEmpty
-        **/
-        isEmpty(value: Dictionary<any>): boolean;
-
-        /**
-        * @see _.isEmpty
-        **/
-        isEmpty(value: string): boolean;
-
-        /**
-        * @see _.isEmpty
-        **/
-        isEmpty(value: any): boolean;
+        isEmpty(value?: any[]|Dictionary<any>|string|any): boolean;
     }
     
     //_.isError
@@ -5803,8 +5786,8 @@ declare module _ {
         * @return True if the values are equivalent, else false.
         **/
         isEqual(
-            a: any,
-            b: any,
+            a?: any,
+            b?: any,
             callback?: (a: any, b: any) => boolean,
             thisArg?: any): boolean;
     }
@@ -5819,7 +5802,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is finite, else false.
         **/
-        isFinite(value: any): boolean;
+        isFinite(value?: any): boolean;
     }
 
     //_.isFunction
@@ -5829,7 +5812,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is a function, else false.
         **/
-        isFunction(value: any): boolean;
+        isFunction(value?: any): boolean;
     }
 
     //_.isNaN
@@ -5842,7 +5825,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is NaN, else false.
         **/
-        isNaN(value: any): boolean;
+        isNaN(value?: any): boolean;
     }
 
     //_.isNull
@@ -5852,7 +5835,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is null, else false.
         **/
-        isNull(value: any): boolean;
+        isNull(value?: any): boolean;
     }
 
     //_.isNumber
@@ -5864,7 +5847,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is a number, else false.
         **/
-        isNumber(value: any): boolean;
+        isNumber(value?: any): boolean;
     }
 
     //_.isObject
@@ -5875,7 +5858,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is an object, else false.
         **/
-        isObject(value: any): boolean;
+        isObject(value?: any): boolean;
     }
 
     //_.isPlainObject
@@ -5885,7 +5868,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if value is a plain object, else false.
         **/
-        isPlainObject(value: any): boolean;
+        isPlainObject(value?: any): boolean;
     }
 
     //_.isRegExp
@@ -5895,7 +5878,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is a regular expression, else false.
         **/
-        isRegExp(value: any): boolean;
+        isRegExp(value?: any): boolean;
     }
 
     //_.isString
@@ -5905,7 +5888,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is a string, else false.
         **/
-        isString(value: any): boolean;
+        isString(value?: any): boolean;
     }
 
     //_.isUndefined
@@ -5915,7 +5898,7 @@ declare module _ {
         * @param value The value to check.
         * @return True if the value is undefined, else false.
         **/
-        isUndefined(value: any): boolean;
+        isUndefined(value?: any): boolean;
     }
 
     //_.keys
@@ -5925,7 +5908,7 @@ declare module _ {
         * @param object The object to inspect.
         * @return An array of property names.
         **/
-        keys(object: any): string[];
+        keys(object?: any): string[];
     }
 
     interface LoDashObjectWrapper<T> {
@@ -6070,12 +6053,12 @@ declare module _ {
     //_.pairs
     interface LoDashStatic {
         /**
-        * Creates a two dimensional array of an object’s key-value pairs, 
+        * Creates a two dimensional array of an object's key-value pairs, 
         * i.e. [[key1, value1], [key2, value2]].
         * @param object The object to inspect.
         * @return Aew array of key-value pairs.
         **/
-        pairs(object: any): any[][];
+        pairs(object?: any): any[][];
     }
 
     interface LoDashObjectWrapper<T> {
@@ -6187,7 +6170,7 @@ declare module _ {
         * @param object The object to inspect.
         * @return Returns an array of property values.
         **/
-        values(object: any): any[];
+        values(object?: any): any[];
     }
 
     /**********
@@ -6213,10 +6196,8 @@ declare module _ {
         trimLeft(str?: string, chars?: string): string;
         trimRight(str?: string, chars?: string): string;
         trunc(str?: string, len?: number): string;
-        trunc(str?: string, options?: { length?: number; omission?: string; separator?: string }): string;
-        trunc(str?: string, options?: { length?: number; omission?: string; separator?: RegExp }): string;
-        words(str?: string, pattern?: string): string[];
-        words(str?: string, pattern?: RegExp): string[];
+        trunc(str?: string, options?: { length?: number; omission?: string; separator?: string|RegExp }): string;
+        words(str?: string, pattern?: string|RegExp): string[];
     }
 
     //_.parseInt
@@ -6231,7 +6212,7 @@ declare module _ {
         * @param radix The radix used to interpret the value to parse.
         * @return The new integer value.
         **/
-        parseInt(value: string, radix?: number): number;
+        parseInt(value?: string, radix?: number): number;
     }
 
     /*************
@@ -6244,7 +6225,7 @@ declare module _ {
         * @param string The string to escape.
         * @return The escaped string.
         **/
-        escape(str: string): string;
+        escape(str?: string): string;
     }
 
     //_.identity
@@ -6254,7 +6235,7 @@ declare module _ {
         * @param value Any value.
         * @return value.
         **/
-        identity<T>(value: T): T;
+        identity<T>(value?: T): T;
     }
 
     //_.mixin
@@ -6263,7 +6244,7 @@ declare module _ {
         * Adds function properties of a source object to the lodash function and chainable wrapper.
         * @param object The object of function properties to add to lodash.
         **/
-        mixin(object: Dictionary<(value: any) => any>): void;
+        mixin(object?: Dictionary<(value: any) => any>): void;
     }
 
     //_.noConflict
@@ -6278,7 +6259,7 @@ declare module _ {
     //_.property
     interface LoDashStatic {
         /**
-         * # Ⓢ
+         * # S
          * Creates a "_.pluck" style function, which returns the key value of a given object.
          * @param key (string)
          * @return the value of that key on the object
@@ -6350,7 +6331,7 @@ declare module _ {
         * @param options.evaluate The "evaluate" delimiter.
         * @param options.import An object to import into the template as local variables.
         * @param options.interpolate The "interpolate" delimiter.
-        * @param sourceURL The sourceURL of the template’s compiled source.
+        * @param sourceURL The sourceURL of the template's compiled source.
         * @param variable The data object variable name.
         * @return Returns the compiled Lo-Dash HTML template or a TemplateExecutor if no data is passed.
         **/
@@ -6437,11 +6418,15 @@ declare module _ {
     }
     
     interface ListIterator<T, TResult> {
-        (value: T, index: number, list: T[]): TResult;
+        (value: T, index: number, collection: T[]): TResult;
+    }
+
+    interface DictionaryIterator<T, TResult> {
+        (value: T, key: string, collection: Dictionary<T>): TResult;
     }
 
     interface ObjectIterator<T, TResult> {
-        (element: T, key: string, list: any): TResult;
+        (element: T, key: string, collection: any): TResult;
     }
 
     interface MemoVoidIterator<T, TResult> {
