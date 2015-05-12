@@ -1,4 +1,6 @@
-/// <reference path="../typings/tsd.d.ts" />
+/// <reference path="../typings/request/request.d.ts" />
+/// <reference path="../typings/xml2js/xml2js.d.ts" />
+/// <reference path="../typings/bluebird/bluebird.d.ts" />
 import request = require('request');
 import Promise = require('bluebird');
 import Message = require('./Message');
@@ -7,12 +9,13 @@ declare class User {
     password: string;
     type: User.Type;
     style: Message.Style;
-    request: typeof request;
+    authenticated: boolean;
+    cookies: request.CookieJar;
     static endpoint: string;
     endpoint_url: string;
     constructor(username?: string, password?: string);
     init(): Promise<any>;
-    authenticate(): Promise<any>;
+    authenticate(): Promise<void>;
     getStyle(): Promise<Message.Style>;
     getBackground(): Promise<Message.Background>;
     getBackgroundImage(): request.Request;

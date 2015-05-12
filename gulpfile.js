@@ -22,7 +22,7 @@ gulp.task('build', ['clean'], function () {
       typescript: require('typescript'),
     }));
   return merge([
-    pipe.dts.pipe(gulp.dest('./dist')),
+    pipe.dts.pipe(gulp.dest('./typings')),
     pipe.js.pipe(gulp.dest('./dist')),
   ]);
 });

@@ -1,12 +1,20 @@
-/// <reference path="../typings/mocha.d.ts"/>
-/// <reference path="../dist/Connection.d.ts"/>
+/// <reference path="../typings/bluebird/bluebird.d.ts" />
+/// <reference path="../typings/mocha/mocha.d.ts" />
+
+/// <reference path="../typings/Connection.d.ts" />
+/// <reference path="../typings/Message.d.ts" />
+/// <reference path="../typings/User.d.ts" />
+/// <reference path="../typings/Room.d.ts" />
+
 
 var should = require('should');
 var winston = require('winston');
 winston.cli();
 
+var Chatango = require('../dist');
+
 describe('Connection', function () {
-  var Connection = require('../dist/Connection');
+  var Connection = Chatango.Connection;
 
   it('#connect', function (done) {
     var conn = new Connection('s30.chatango.com');
@@ -25,15 +33,16 @@ describe('Connection', function () {
 });
 
 describe('User', function () {
-  var User = require('../dist/User');
+  var User = Chatango.User;
+
   it('correct endpoint url', function () {
     var user = new User('ttttestuser', 'asdf1234');
     user.endpoint_url.should.equal('http://ust.chatango.com/profileimg/t/t/ttttestuser');
   });
   it('get background style', function (done) {
     var user = new User('ttttestuser', 'asdf1234');
-    user.getBackground().then(function (style) {
-      style.should.eql({
+    user.getBackground().then(function (background) {
+      background.should.eql({
         align: 'tl',
         ialp: 100,
         tile: 1,
@@ -74,11 +83,19 @@ describe('User', function () {
       done();
     });
   });
+  it('authenticate', function (done) {
+    var user = new User('ttttestuser', 'asdf1234');
+    user.authenticate().then(function () {
+      var cookies = user.cookies.getCookies('http://st.chatango.com');
+      cookies.should.be.Array.with.length(4);
+      done();
+    });
+  });
 });
 
 describe('Room', function () {
-  var Room = require('../dist/Room');
-  var User = require('../dist/User');
+  var Room = Chatango.Room;
+  var User = Chatango.User;
 
   it('#join', function (done) {
     var room = new Room('ttttest', new User);

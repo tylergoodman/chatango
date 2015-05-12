@@ -1,4 +1,6 @@
-/// <reference path="../typings/tsd.d.ts" />
+/// <reference path="../typings/node/node.d.ts" />
+/// <reference path="../typings/winston/winston.d.ts" />
+/// <reference path="../typings/bluebird/bluebird.d.ts" />
 
 import events = require('events');
 import net = require('net');

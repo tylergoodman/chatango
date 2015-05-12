@@ -1,4 +1,6 @@
-/// <reference path="../typings/tsd.d.ts" />
+/// <reference path="../typings/request/request.d.ts" />
+/// <reference path="../typings/xml2js/xml2js.d.ts" />
+/// <reference path="../typings/bluebird/bluebird.d.ts" />
 var request = require('request');
 var xml2js = require('xml2js');
 var Promise = require('bluebird');
@@ -30,9 +32,12 @@ var User = (function () {
                 isvid: 0
             }
         };
-        this.request = request.defaults({ jar: true });
+        this.authenticated = false;
+        this.cookies = request.jar();
         this.username = username;
         this.password = password;
+        this.cookies.setCookie(request.cookie('cookies_enabled.chatango.com=yes'), 'http://.chatango.com');
+        this.cookies.setCookie(request.cookie('fph.chatango.com=http'), 'http://.chatango.com');
         if (!username && !password) {
             this.type = User.Type.Anonymous;
         }
@@ -54,7 +59,24 @@ var User = (function () {
         return this.getBackground();
     };
     User.prototype.authenticate = function () {
+        var _this = this;
         return new Promise(function (resolve, reject) {
+            request.post({
+                url: 'http://scripts.st.chatango.com/setcookies',
+                jar: _this.cookies,
+                form: {
+                    pwd: _this.password,
+                    sid: _this.username
+                },
+                headers: {
+                    'User-Agent': 'ChatangoJS'
+                }
+            }, function (error, response, body) {
+                if (error) {
+                    return reject(error);
+                }
+                resolve();
+            });
         });
     };
     User.prototype.getStyle = function () {

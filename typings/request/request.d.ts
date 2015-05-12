@@ -161,6 +161,7 @@ declare module 'request' {
 			add(cookie: Cookie): void;
 			get(req: Request): Cookie;
 			cookieString(req: Request): string;
+			setCookie(cookie: Cookie, url: string): any;
 		}
 
 		export interface CookieValue {

@@ -1,4 +1,7 @@
-/// <reference path="../typings/tsd.d.ts" />
+/// <reference path="../typings/node/node.d.ts" />
+/// <reference path="../typings/lodash/lodash.d.ts" />
+/// <reference path="../typings/bluebird/bluebird.d.ts" />
+/// <reference path="../typings/winston/winston.d.ts" />
 
 import events = require('events');
 import util = require('util');
@@ -92,7 +95,7 @@ class Room extends events.EventEmitter {
   private authenticate(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       if (this.user.type === User.Type.Anonymous)
-        return resolve(undefined);
+        return resolve();
 
       if (this.user.type === User.Type.Temporary)
         this.send(`blogin:${this.user.username}`);

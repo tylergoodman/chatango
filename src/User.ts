@@ -1,4 +1,6 @@
-/// <reference path="../typings/tsd.d.ts" />
+/// <reference path="../typings/request/request.d.ts" />
+/// <reference path="../typings/xml2js/xml2js.d.ts" />
+/// <reference path="../typings/bluebird/bluebird.d.ts" />
 
 import request = require('request');
 import xml2js = require('xml2js');
@@ -32,8 +34,9 @@ class User {
       isvid: 0
     }
   };
-  
-  request: typeof request = request.defaults({jar: true});
+
+  authenticated: boolean = false;
+  cookies: request.CookieJar = request.jar();
 
   static endpoint: string = 'http://ust.chatango.com/profileimg';
 //  static enum Type {
@@ -42,7 +45,6 @@ class User {
 //    Registered,
 //  }
 
-// TODO - http://ust.chatango.com/profileimg/t/t/ttttestuser/msgstyles.json
   get endpoint_url(): string {
     return `${User.endpoint}/${this.username.charAt(0)}/${this.username.charAt(1)}/${this.username}`;
   }
@@ -50,6 +52,9 @@ class User {
   constructor(username: string = '', password: string = '') {
     this.username = username;
     this.password = password;
+
+    this.cookies.setCookie(request.cookie('cookies_enabled.chatango.com=yes'), 'http://.chatango.com');
+    this.cookies.setCookie(request.cookie('fph.chatango.com=http'), 'http://.chatango.com');
 
     if (!username && !password) {
       this.type = User.Type.Anonymous;
@@ -68,9 +73,24 @@ class User {
     return this.getBackground();
   }
 
-  authenticate(): Promise<any> {
-    return new Promise((resolve, reject) => {
-      
+  authenticate(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      request.post({
+        url: 'http://scripts.st.chatango.com/setcookies',
+        jar: this.cookies,
+        form: {
+          pwd: this.password,
+          sid: this.username
+        },
+        headers: {
+          'User-Agent': 'ChatangoJS'
+        }
+      }, (error, response, body) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve();
+      });
     });
   }
 

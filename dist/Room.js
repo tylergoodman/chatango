@@ -1,4 +1,7 @@
-/// <reference path="../typings/tsd.d.ts" />
+/// <reference path="../typings/node/node.d.ts" />
+/// <reference path="../typings/lodash/lodash.d.ts" />
+/// <reference path="../typings/bluebird/bluebird.d.ts" />
+/// <reference path="../typings/winston/winston.d.ts" />
 var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -78,7 +81,7 @@ var Room = (function (_super) {
         var _this = this;
         return new Promise(function (resolve, reject) {
             if (_this.user.type === User.Type.Anonymous)
-                return resolve(undefined);
+                return resolve();
             if (_this.user.type === User.Type.Temporary)
                 _this.send("blogin:" + _this.user.username);
             if (_this.user.type === User.Type.Registered)
