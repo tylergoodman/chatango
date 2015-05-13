@@ -29,7 +29,7 @@ class Room extends events.EventEmitter {
     this.name = name;
     this.user = user;
 
-    this.connection = new Connection(this.getServer(this.name));
+    this.connection = new Connection(this.getServer());
 
     this.connection.on('data', this.receiveData.bind(this));
 
@@ -38,7 +38,7 @@ class Room extends events.EventEmitter {
     });
 
     this.connection.on('close', () => {
-      winston.log('verbose', `Disconnected from room ${this.name}`);
+      winston.log('info', `Disconnected from room ${this.name}`);
       this.buffer = '';
       this.firstSend = true;
       this.has_init = false;
@@ -108,7 +108,7 @@ class Room extends events.EventEmitter {
   }
 
   private handleCommand(command: string, args: string[]): void {
-    winston.log('verbose', `Received <${command}> command from ${this.name}`);
+    winston.log('verbose', `Received <${command}> command from room ${this.name}`);
     switch (command) {
       case 'inited':
         this.emit('init');
@@ -118,7 +118,7 @@ class Room extends events.EventEmitter {
         this.emit('join');
         break;
       default:
-        winston.log('warn', `Received command that has no handler: ${command}`);
+        winston.log('warn', `Received command that has no handler from room ${this.name}: <${command}>`);
         break;
     }
   }
@@ -133,14 +133,14 @@ class Room extends events.EventEmitter {
       commands.pop();
       this.buffer = '';
     }
-    winston.log('silly', `Received commands: ${commands}`);
+    winston.log('silly', `Received commands from room ${this.name}: ${commands}`);
     for (var i = 0; i < commands.length; i++) {
       var [command, ...args] = commands[i].split(':');
       this.handleCommand(command, args);
     }
   }
 
-  private getServer(room_name: string): string {
+  private getServer(room_name: string = this.name): string {
     // magic
     var tsweights: [string, number][] = [
       ['5', 75], ['6', 75], ['7', 75], ['8', 75], ['16', 75], ['17', 75], ['18', 75],

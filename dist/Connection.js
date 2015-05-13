@@ -28,7 +28,7 @@ var Connection = (function (_super) {
         this.socket.setEncoding('utf8');
         this.socket.on('connect', function () {
             _this.connected = true;
-            winston.log('verbose', "Connected to " + _this.address);
+            winston.log('info', "Connected to " + _this.address);
             _this.emit('connect');
         });
         this.socket.on('data', function (data) {
@@ -53,7 +53,7 @@ var Connection = (function (_super) {
         });
         this.socket.on('close', function (had_error) {
             _this.connected = false;
-            winston.log('verbose', "Connection to " + _this.address + " closed");
+            winston.log('info', "Connection to " + _this.address + " closed");
             _this.emit('close', had_error);
             if (_this.auto_reconnect) {
                 winston.log('verbose', "Attempting to reconnect to " + _this.address);

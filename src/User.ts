@@ -1,10 +1,14 @@
 /// <reference path="../typings/request/request.d.ts" />
 /// <reference path="../typings/xml2js/xml2js.d.ts" />
 /// <reference path="../typings/bluebird/bluebird.d.ts" />
+/// <reference path="../typings/winston/winston.d.ts" />
+/// <reference path="../typings/lodash/lodash.d.ts" />
 
 import request = require('request');
 import xml2js = require('xml2js');
 import Promise = require('bluebird');
+import winston = require('winston');
+import _ = require('lodash');
 
 import Message = require('./Message');
 
@@ -53,8 +57,8 @@ class User {
     this.username = username;
     this.password = password;
 
-    this.cookies.setCookie(request.cookie('cookies_enabled.chatango.com=yes'), 'http://.chatango.com');
-    this.cookies.setCookie(request.cookie('fph.chatango.com=http'), 'http://.chatango.com');
+//    this.cookies.setCookie(request.cookie('cookies_enabled.chatango.com=yes'), 'http://.chatango.com');
+//    this.cookies.setCookie(request.cookie('fph.chatango.com=http'), 'http://.chatango.com');
 
     if (!username && !password) {
       this.type = User.Type.Anonymous;
@@ -74,6 +78,7 @@ class User {
   }
 
   authenticate(): Promise<void> {
+    winston.log('silly', `Authenticating user ${this.username}`);
     return new Promise<void>((resolve, reject) => {
       request.post({
         url: 'http://scripts.st.chatango.com/setcookies',
@@ -87,19 +92,24 @@ class User {
         }
       }, (error, response, body) => {
         if (error) {
+          winston.log('error', `Error while authenticating user ${this.username}: ${error}`);
           return reject(error);
         }
+        winston.log('info', `Authentication successful: ${this.username}`);
         resolve();
       });
     });
   }
 
   getStyle(): Promise<Message.Style> {
+    winston.log('silly', `Getting style data for user ${this.username}`);
     return new Promise<Message.StyleAPIGet>((resolve, reject) => {
       request(`${this.endpoint_url}/msgstyles.json`, (error, response, body) => {
         if (error) {
+          winston.log('error', `Error while retrieving style data for user ${this.username}`);
           return reject(error);
         }
+        winston.log('silly', `Successfully retrieved style data for user ${this.username}`);
         resolve(JSON.parse(body));
       });
     })
@@ -111,25 +121,32 @@ class User {
       this.style.font.bold = style.bold;
       this.style.font.italics = style.italics;
       this.style.font.underline = style.underline;
+      winston.log('verbose', `Successfully retrieved style for user ${this.username}`);
       return this.style;
     });
   }
 
   getBackground(): Promise<Message.Background> {
+    winston.log('silly', `Getting background xml for user ${this.username}`);
     return new Promise<string>((resolve, reject) => {
       request(`${this.endpoint_url}/msgbg.xml`, (error, response, body) => {
         if (error) {
+          winston.log('error', `Error while retrieving background xml for user ${this.username}`);
           return reject(error);
         }
+        winston.log('silly', `Succesfully retrieved background xml for user ${this.username}`);
         resolve(body);
       });
     })
     .then((body) => {
+      winston.log('silly', `Parsing background xml for ${this.username}`);
       return new Promise<Message.BackgroundAPIGet>((resolve, reject) => {
         xml2js.parseString(body, (err, result) => {
           if (err) {
+            winston.log('error', `Error while parsing background xml for user ${this.username}`);
             return reject(err);
           }
+          winston.log('silly', `Successfully parsed background xml for user ${this.username}`);
           resolve(result);
         });
       });
@@ -145,11 +162,30 @@ class User {
         'hasrec': Number(result.bgi.$.hasrec),
         'isvid': Number(result.bgi.$.isvid),
       };
+      winston.log('verbose', `Successfully retrieved background for user ${this.username}`);
       return this.style.background;
     });
   }
 
-  // TODO - setBackground()
+  setBackground(background?: Message.Background): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+      var data = _.extend(background, this.style.background);
+      data['lo'] = this.username;
+      data['p'] = this.password;
+
+      request.post({
+        url: 'http://chatango.com/updatemsgbg',
+        jar: this.cookies,
+        formData: data,
+      }, (error, response, body) => {
+        if (error) {
+          reject(error);
+        }
+        console.log(body);
+        resolve();
+      });
+    });
+  }
 
   getBackgroundImage(): request.Request {
     return request(`${this.endpoint_url}/msgbg.jpg`);

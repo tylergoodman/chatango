@@ -1,9 +1,13 @@
 /// <reference path="../typings/request/request.d.ts" />
 /// <reference path="../typings/xml2js/xml2js.d.ts" />
 /// <reference path="../typings/bluebird/bluebird.d.ts" />
+/// <reference path="../typings/winston/winston.d.ts" />
+/// <reference path="../typings/lodash/lodash.d.ts" />
 var request = require('request');
 var xml2js = require('xml2js');
 var Promise = require('bluebird');
+var winston = require('winston');
+var _ = require('lodash');
 var Message = require('./Message');
 var User = (function () {
     function User(username, password) {
@@ -36,8 +40,6 @@ var User = (function () {
         this.cookies = request.jar();
         this.username = username;
         this.password = password;
-        this.cookies.setCookie(request.cookie('cookies_enabled.chatango.com=yes'), 'http://.chatango.com');
-        this.cookies.setCookie(request.cookie('fph.chatango.com=http'), 'http://.chatango.com');
         if (!username && !password) {
             this.type = User.Type.Anonymous;
         }
@@ -60,6 +62,7 @@ var User = (function () {
     };
     User.prototype.authenticate = function () {
         var _this = this;
+        winston.log('silly', "Authenticating user " + this.username);
         return new Promise(function (resolve, reject) {
             request.post({
                 url: 'http://scripts.st.chatango.com/setcookies',
@@ -73,19 +76,24 @@ var User = (function () {
                 }
             }, function (error, response, body) {
                 if (error) {
+                    winston.log('error', "Error while authenticating user " + _this.username + ": " + error);
                     return reject(error);
                 }
+                winston.log('info', "Authentication successful: " + _this.username);
                 resolve();
             });
         });
     };
     User.prototype.getStyle = function () {
         var _this = this;
+        winston.log('silly', "Getting style data for user " + this.username);
         return new Promise(function (resolve, reject) {
             request(_this.endpoint_url + "/msgstyles.json", function (error, response, body) {
                 if (error) {
+                    winston.log('error', "Error while retrieving style data for user " + _this.username);
                     return reject(error);
                 }
+                winston.log('silly', "Successfully retrieved style data for user " + _this.username);
                 resolve(JSON.parse(body));
             });
         })
@@ -97,25 +105,32 @@ var User = (function () {
             _this.style.font.bold = style.bold;
             _this.style.font.italics = style.italics;
             _this.style.font.underline = style.underline;
+            winston.log('verbose', "Successfully retrieved style for user " + _this.username);
             return _this.style;
         });
     };
     User.prototype.getBackground = function () {
         var _this = this;
+        winston.log('silly', "Getting background xml for user " + this.username);
         return new Promise(function (resolve, reject) {
             request(_this.endpoint_url + "/msgbg.xml", function (error, response, body) {
                 if (error) {
+                    winston.log('error', "Error while retrieving background xml for user " + _this.username);
                     return reject(error);
                 }
+                winston.log('silly', "Succesfully retrieved background xml for user " + _this.username);
                 resolve(body);
             });
         })
             .then(function (body) {
+            winston.log('silly', "Parsing background xml for " + _this.username);
             return new Promise(function (resolve, reject) {
                 xml2js.parseString(body, function (err, result) {
                     if (err) {
+                        winston.log('error', "Error while parsing background xml for user " + _this.username);
                         return reject(err);
                     }
+                    winston.log('silly', "Successfully parsed background xml for user " + _this.username);
                     resolve(result);
                 });
             });
@@ -131,7 +146,27 @@ var User = (function () {
                 'hasrec': Number(result.bgi.$.hasrec),
                 'isvid': Number(result.bgi.$.isvid),
             };
+            winston.log('verbose', "Successfully retrieved background for user " + _this.username);
             return _this.style.background;
+        });
+    };
+    User.prototype.setBackground = function (background) {
+        var _this = this;
+        return new Promise(function (resolve, reject) {
+            var data = _.extend(background, _this.style.background);
+            data['lo'] = _this.username;
+            data['p'] = _this.password;
+            request.post({
+                url: 'http://chatango.com/updatemsgbg',
+                jar: _this.cookies,
+                formData: data,
+            }, function (error, response, body) {
+                if (error) {
+                    reject(error);
+                }
+                console.log(body);
+                resolve();
+            });
         });
     };
     User.prototype.getBackgroundImage = function () {

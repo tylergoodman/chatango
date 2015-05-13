@@ -25,13 +25,13 @@ var Room = (function (_super) {
         this.has_init = false;
         this.name = name;
         this.user = user;
-        this.connection = new Connection(this.getServer(this.name));
+        this.connection = new Connection(this.getServer());
         this.connection.on('data', this.receiveData.bind(this));
         this.connection.on('connect', function () {
             winston.log('info', "Connected to room " + _this.name);
         });
         this.connection.on('close', function () {
-            winston.log('verbose', "Disconnected from room " + _this.name);
+            winston.log('info', "Disconnected from room " + _this.name);
             _this.buffer = '';
             _this.firstSend = true;
             _this.has_init = false;
@@ -90,7 +90,7 @@ var Room = (function (_super) {
         });
     };
     Room.prototype.handleCommand = function (command, args) {
-        winston.log('verbose', "Received <" + command + "> command from " + this.name);
+        winston.log('verbose', "Received <" + command + "> command from room " + this.name);
         switch (command) {
             case 'inited':
                 this.emit('init');
@@ -100,7 +100,7 @@ var Room = (function (_super) {
                 this.emit('join');
                 break;
             default:
-                winston.log('warn', "Received command that has no handler: " + command);
+                winston.log('warn', "Received command that has no handler from room " + this.name + ": <" + command + ">");
                 break;
         }
     };
@@ -114,13 +114,14 @@ var Room = (function (_super) {
             commands.pop();
             this.buffer = '';
         }
-        winston.log('silly', "Received commands: " + commands);
+        winston.log('silly', "Received commands from room " + this.name + ": " + commands);
         for (var i = 0; i < commands.length; i++) {
             var _a = commands[i].split(':'), command = _a[0], args = _a.slice(1);
             this.handleCommand(command, args);
         }
     };
     Room.prototype.getServer = function (room_name) {
+        if (room_name === void 0) { room_name = this.name; }
         var tsweights = [
             ['5', 75], ['6', 75], ['7', 75], ['8', 75], ['16', 75], ['17', 75], ['18', 75],
             ['9', 95], ['11', 95], ['12', 95], ['13', 95], ['14', 95], ['15', 95], ['19', 110],

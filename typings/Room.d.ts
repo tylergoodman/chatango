@@ -24,6 +24,6 @@ declare class Room extends events.EventEmitter {
     private authenticate();
     private handleCommand(command, args);
     private receiveData(data);
-    private getServer(room_name);
+    private getServer(room_name?);
 }
 export = Room;

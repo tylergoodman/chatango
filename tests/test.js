@@ -10,6 +10,7 @@
 var should = require('should');
 var winston = require('winston');
 winston.cli();
+winston.level = 'verbose';
 
 var Chatango = require('../dist');
 
@@ -36,50 +37,42 @@ describe('User', function () {
   var User = Chatango.User;
 
   it('correct endpoint url', function () {
-    var user = new User('ttttestuser', 'asdf1234');
+    var user = new User('ttttestuser');
     user.endpoint_url.should.equal('http://ust.chatango.com/profileimg/t/t/ttttestuser');
   });
   it('get background style', function (done) {
-    var user = new User('ttttestuser', 'asdf1234');
+    var user = new User('ttttestuser');
     user.getBackground().then(function (background) {
-      background.should.eql({
-        align: 'tl',
-        ialp: 100,
-        tile: 1,
-        bgalp: 20,
-        bgc: 'FFFFFF',
-        useimg: 1,
-        hasrec: 0,
-        isvid: 0
-      });
+      user.style.background.should.eql(background);
+//      console.log(background);
+
+      background.align.should.be.String.with.length(2).and.match(/^(tl|tr|bl|br)$/);
+      background.ialp.should.be.Number.within(0, 100);
+      background.tile.should.be.Number.within(0, 1);
+      background.bgalp.should.be.Number.within(0, 100);
+      background.bgc.should.be.String.with.length(6).and.match(/^[0-9a-fA-F]{6}$/);
+      background.useimg.should.be.Number.within(0, 1);
+      background.hasrec.should.be.Number.within(0, 1);
+      background.isvid.should.be.Number.within(0, 1);
+
       done();
     });
   });
   it('get message style', function (done) {
-    var user = new User('ttttestuser', 'asdf1234');
+    var user = new User('ttttestuser');
     user.getStyle().then(function (style) {
       user.style.should.eql(style);
-      style.should.eql({
-        name: '000000',
-        font: {
-          color: '',
-          size: 11,
-          face: 'Arial',
-          bold: false,
-          italics: false,
-          underline: false
-        },
-        background: {
-          align: 'tl',
-          ialp: 100,
-          tile: 1,
-          bgalp: 100,
-          bgc: '',
-          useimg: 0,
-          hasrec: 0,
-          isvid: 0
-        }
-      });
+//      console.log(style);
+
+      style.name.should.be.String.and.match(/^|[0-9a-fA-F]{6}$/);
+      style.font.color.should.be.String.and.match(/^|[0-9a-fA-F]{6}$/);
+      style.font.size.should.be.Number.within(9, 22);
+      style.font.face.should.be.String;
+      Chatango.Message.Font.should.containEql(style.font.face);
+      style.font.bold.should.be.Boolean;
+      style.font.italics.should.be.Boolean;
+      style.font.underline.should.be.Boolean;
+
       done();
     });
   });
@@ -90,6 +83,18 @@ describe('User', function () {
       cookies.should.be.Array.with.length(4);
       done();
     });
+  });
+  it('set background', function (done) {
+    var user = new User('ttttestuser', 'asdf1234');
+    user
+      .authenticate()
+      .then(user.setBackground({
+        bgc: 'ff00ff'
+      }))
+      .then(function () {
+        console.log(user.style.background);
+        done();
+      });
   });
 });
 
