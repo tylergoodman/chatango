@@ -39,7 +39,6 @@ class User {
     }
   };
 
-  authenticated: boolean = false;
   cookies: request.CookieJar = request.jar();
 
   static endpoint: string = 'http://ust.chatango.com/profileimg';
@@ -74,14 +73,21 @@ class User {
   }
 
   init(): Promise<any> {
-    return this.getBackground();
+    return this.authenticate()
+      .then(() => {
+        return this.getStyle();
+      })
+      .then(() => {
+        return this.getBackground();
+      });
   }
 
   authenticate(): Promise<void> {
     winston.log('silly', `Authenticating user ${this.username}`);
     return new Promise<void>((resolve, reject) => {
-      request.post({
+      request({
         url: 'http://scripts.st.chatango.com/setcookies',
+        method: 'POST',
         jar: this.cookies,
         form: {
           pwd: this.password,
@@ -98,6 +104,27 @@ class User {
         winston.log('info', `Authentication successful: ${this.username}`);
         resolve();
       });
+//      request({
+//        url: 'http://chatango.com/login',
+//        method: 'POST',
+//        jar: this.cookies,
+//        form: {
+//          "user_id": this.username,
+//          "password": this.password,
+//          "storecookie": "on",
+//          "checkerrors": "yes"
+//        },
+//        headers: {
+//          'User-Agent': 'ChatangoJS'
+//        }
+//      }, (error, response, body) => {
+//        if (error) {
+//          winston.log('error', `Error while authenticating user ${this.username}: ${error}`);
+//          return reject(error);
+//        }
+//        winston.log('info', `Authentication successful: ${this.username}`);
+//        resolve();
+//      });
     });
   }
 
@@ -167,21 +194,27 @@ class User {
     });
   }
 
-  setBackground(background?: Message.Background): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      var data = _.extend(background, this.style.background);
-      data['lo'] = this.username;
-      data['p'] = this.password;
+  setBackground(background: Message.Background = this.style.background): Promise<void> {
+    var data = _.extend(this.style.background, background);
+    data['lo'] = this.username;
+    data['p'] = this.password;
 
-      request.post({
+    return new Promise<void>((resolve, reject) => {
+      request({
         url: 'http://chatango.com/updatemsgbg',
+        method: 'POST',
         jar: this.cookies,
-        formData: data,
+        form: data,
+        headers: {
+          'User-Agent': 'ChatangoJS'
+        }
       }, (error, response, body) => {
         if (error) {
-          reject(error);
+          return reject(error);
         }
-        console.log(body);
+        if (response.statusCode !== 200) {
+          return reject(new Error(response.statusMessage));
+        }
         resolve();
       });
     });

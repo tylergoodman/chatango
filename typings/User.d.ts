@@ -11,7 +11,6 @@ declare class User {
     password: string;
     type: User.Type;
     style: Message.Style;
-    authenticated: boolean;
     cookies: request.CookieJar;
     static endpoint: string;
     endpoint_url: string;
@@ -20,7 +19,7 @@ declare class User {
     authenticate(): Promise<void>;
     getStyle(): Promise<Message.Style>;
     getBackground(): Promise<Message.Background>;
-    setBackground(background?: Message.Background): Promise<any>;
+    setBackground(background?: Message.Background): Promise<void>;
     getBackgroundImage(): request.Request;
     static getBackgroundImage(username: string): request.Request;
     getAvatar(): request.Request;

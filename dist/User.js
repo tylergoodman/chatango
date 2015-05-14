@@ -36,7 +36,6 @@ var User = (function () {
                 isvid: 0
             }
         };
-        this.authenticated = false;
         this.cookies = request.jar();
         this.username = username;
         this.password = password;
@@ -58,14 +57,22 @@ var User = (function () {
         configurable: true
     });
     User.prototype.init = function () {
-        return this.getBackground();
+        var _this = this;
+        return this.authenticate()
+            .then(function () {
+            return _this.getStyle();
+        })
+            .then(function () {
+            return _this.getBackground();
+        });
     };
     User.prototype.authenticate = function () {
         var _this = this;
         winston.log('silly', "Authenticating user " + this.username);
         return new Promise(function (resolve, reject) {
-            request.post({
+            request({
                 url: 'http://scripts.st.chatango.com/setcookies',
+                method: 'POST',
                 jar: _this.cookies,
                 form: {
                     pwd: _this.password,
@@ -152,19 +159,26 @@ var User = (function () {
     };
     User.prototype.setBackground = function (background) {
         var _this = this;
+        if (background === void 0) { background = this.style.background; }
+        var data = _.extend(this.style.background, background);
+        data['lo'] = this.username;
+        data['p'] = this.password;
         return new Promise(function (resolve, reject) {
-            var data = _.extend(background, _this.style.background);
-            data['lo'] = _this.username;
-            data['p'] = _this.password;
-            request.post({
+            request({
                 url: 'http://chatango.com/updatemsgbg',
+                method: 'POST',
                 jar: _this.cookies,
-                formData: data,
+                form: data,
+                headers: {
+                    'User-Agent': 'ChatangoJS'
+                }
             }, function (error, response, body) {
                 if (error) {
-                    reject(error);
+                    return reject(error);
                 }
-                console.log(body);
+                if (response.statusCode !== 200) {
+                    return reject(new Error(response.statusMessage));
+                }
                 resolve();
             });
         });

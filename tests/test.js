@@ -5,6 +5,7 @@
 /// <reference path="../typings/Message.d.ts" />
 /// <reference path="../typings/User.d.ts" />
 /// <reference path="../typings/Room.d.ts" />
+// TODO - these references aren't working, fix them
 
 
 var should = require('should');
@@ -56,7 +57,8 @@ describe('User', function () {
       background.isvid.should.be.Number.within(0, 1);
 
       done();
-    });
+    })
+    .catch(done);
   });
   it('get message style', function (done) {
     var user = new User('ttttestuser');
@@ -68,65 +70,77 @@ describe('User', function () {
       style.font.color.should.be.String.and.match(/^|[0-9a-fA-F]{6}$/);
       style.font.size.should.be.Number.within(9, 22);
       style.font.face.should.be.String;
+      // font should be one of the enumerated fonts
       Chatango.Message.Font.should.containEql(style.font.face);
       style.font.bold.should.be.Boolean;
       style.font.italics.should.be.Boolean;
       style.font.underline.should.be.Boolean;
 
       done();
-    });
+    })
+    .catch(done);
   });
   it('authenticate', function (done) {
     var user = new User('ttttestuser', 'asdf1234');
     user.authenticate().then(function () {
       var cookies = user.cookies.getCookies('http://st.chatango.com');
       cookies.should.be.Array.with.length(4);
+      cookies[2].should.containDeep({
+        key: 'auth.chatango.com'
+      });
       done();
-    });
+    })
+    .catch(done);
   });
   it('set background', function (done) {
     var user = new User('ttttestuser', 'asdf1234');
     user
-      .authenticate()
-      .then(user.setBackground({
-        bgc: 'ff00ff'
-      }))
+      .init()
       .then(function () {
-        console.log(user.style.background);
+        return user.setBackground({
+          bgc: 'aaaaaa'
+        });
+      })
+      .then(function () {
+        return user.getBackground();
+      })
+      .then(function (background) {
+        background.should.have.property('bgc', 'aaaaaa');
         done();
-      });
+      })
+      .catch(done);
   });
 });
 
-describe('Room', function () {
-  var Room = Chatango.Room;
-  var User = Chatango.User;
-
-  it('#join', function (done) {
-    var room = new Room('ttttest', new User);
-    room
-      .join()
-      .then(function () {
-        return room.leave();
-      })
-      .then(function () {
-        done()
-      });
-  });
-
-//  it('#authenticate', function (done) {
-//    winston.level = 'silly';
-//    var room = new Room('1635132', new User('ttttestuser', 'asdf1234'))
+//describe('Room', function () {
+//  var Room = Chatango.Room;
+//  var User = Chatango.User;
+//
+//  it('#join', function (done) {
+//    var room = new Room('ttttest', new User);
 //    room
 //      .join()
-//      .then(function () {
-//        
-//      })
 //      .then(function () {
 //        return room.leave();
 //      })
 //      .then(function () {
-//        done();
+//        done()
 //      });
 //  });
-});
+//
+////  it('#authenticate', function (done) {
+////    winston.level = 'silly';
+////    var room = new Room('1635132', new User('ttttestuser', 'asdf1234'))
+////    room
+////      .join()
+////      .then(function () {
+////        
+////      })
+////      .then(function () {
+////        return room.leave();
+////      })
+////      .then(function () {
+////        done();
+////      });
+////  });
+//});
