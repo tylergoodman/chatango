@@ -100,7 +100,7 @@ var User = (function () {
                     winston.log('error', "Error while retrieving style data for user " + _this.username);
                     return reject(error);
                 }
-                winston.log('silly', "Successfully retrieved style data for user " + _this.username);
+                winston.log('silly', "Retrieved style data for user " + _this.username);
                 resolve(JSON.parse(body));
             });
         })
@@ -112,7 +112,7 @@ var User = (function () {
             _this.style.font.bold = style.bold;
             _this.style.font.italics = style.italics;
             _this.style.font.underline = style.underline;
-            winston.log('verbose', "Successfully retrieved style for user " + _this.username);
+            winston.log('verbose', "Retrieved style for user " + _this.username);
             return _this.style;
         });
     };
@@ -125,7 +125,7 @@ var User = (function () {
                     winston.log('error', "Error while retrieving background xml for user " + _this.username);
                     return reject(error);
                 }
-                winston.log('silly', "Succesfully retrieved background xml for user " + _this.username);
+                winston.log('silly', "Retrieved background xml for user " + _this.username);
                 resolve(body);
             });
         })
@@ -137,7 +137,7 @@ var User = (function () {
                         winston.log('error', "Error while parsing background xml for user " + _this.username);
                         return reject(err);
                     }
-                    winston.log('silly', "Successfully parsed background xml for user " + _this.username);
+                    winston.log('silly', "Parsed background xml for user " + _this.username);
                     resolve(result);
                 });
             });
@@ -153,13 +153,14 @@ var User = (function () {
                 'hasrec': Number(result.bgi.$.hasrec),
                 'isvid': Number(result.bgi.$.isvid),
             };
-            winston.log('verbose', "Successfully retrieved background for user " + _this.username);
+            winston.log('verbose', "Retrieved background for user " + _this.username);
             return _this.style.background;
         });
     };
     User.prototype.setBackground = function (background) {
         var _this = this;
         if (background === void 0) { background = this.style.background; }
+        winston.log('silly', "Saving background for user " + this.username);
         var data = _.extend(this.style.background, background);
         data['lo'] = this.username;
         data['p'] = this.password;
@@ -174,11 +175,14 @@ var User = (function () {
                 }
             }, function (error, response, body) {
                 if (error) {
+                    winston.log('error', "Error while saving background for user " + _this.username + ": " + error);
                     return reject(error);
                 }
                 if (response.statusCode !== 200) {
+                    winston.log('error', "Error while saving background for user " + _this.username + ": " + response.statusMessage + "\nAre you authenticated?");
                     return reject(new Error(response.statusMessage));
                 }
+                winston.log('verbose', "Saved background for user " + _this.username);
                 resolve();
             });
         });

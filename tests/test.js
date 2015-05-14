@@ -1,5 +1,6 @@
 /// <reference path="../typings/bluebird/bluebird.d.ts" />
 /// <reference path="../typings/mocha/mocha.d.ts" />
+/// <reference path="../typings/lodash/lodash.d.ts" />
 
 /// <reference path="../typings/Connection.d.ts" />
 /// <reference path="../typings/Message.d.ts" />
@@ -10,6 +11,7 @@
 
 var should = require('should');
 var winston = require('winston');
+var _ = require('lodash');
 winston.cli();
 winston.level = 'verbose';
 
@@ -94,18 +96,19 @@ describe('User', function () {
   });
   it('set background', function (done) {
     var user = new User('ttttestuser', 'asdf1234');
+    var new_bgc = _.chain(_.times(6, _.partial(_.random, 65, 70, false))).map(function (n) { return String.fromCharCode(n); }).join('').value();
     user
       .init()
       .then(function () {
         return user.setBackground({
-          bgc: 'aaaaaa'
+          bgc: new_bgc
         });
       })
       .then(function () {
         return user.getBackground();
       })
       .then(function (background) {
-        background.should.have.property('bgc', 'aaaaaa');
+        background.should.have.property('bgc', new_bgc);
         done();
       })
       .catch(done);

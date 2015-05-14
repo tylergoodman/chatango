@@ -136,7 +136,7 @@ class User {
           winston.log('error', `Error while retrieving style data for user ${this.username}`);
           return reject(error);
         }
-        winston.log('silly', `Successfully retrieved style data for user ${this.username}`);
+        winston.log('silly', `Retrieved style data for user ${this.username}`);
         resolve(JSON.parse(body));
       });
     })
@@ -148,7 +148,7 @@ class User {
       this.style.font.bold = style.bold;
       this.style.font.italics = style.italics;
       this.style.font.underline = style.underline;
-      winston.log('verbose', `Successfully retrieved style for user ${this.username}`);
+      winston.log('verbose', `Retrieved style for user ${this.username}`);
       return this.style;
     });
   }
@@ -161,7 +161,7 @@ class User {
           winston.log('error', `Error while retrieving background xml for user ${this.username}`);
           return reject(error);
         }
-        winston.log('silly', `Succesfully retrieved background xml for user ${this.username}`);
+        winston.log('silly', `Retrieved background xml for user ${this.username}`);
         resolve(body);
       });
     })
@@ -173,7 +173,7 @@ class User {
             winston.log('error', `Error while parsing background xml for user ${this.username}`);
             return reject(err);
           }
-          winston.log('silly', `Successfully parsed background xml for user ${this.username}`);
+          winston.log('silly', `Parsed background xml for user ${this.username}`);
           resolve(result);
         });
       });
@@ -189,12 +189,13 @@ class User {
         'hasrec': Number(result.bgi.$.hasrec),
         'isvid': Number(result.bgi.$.isvid),
       };
-      winston.log('verbose', `Successfully retrieved background for user ${this.username}`);
+      winston.log('verbose', `Retrieved background for user ${this.username}`);
       return this.style.background;
     });
   }
 
   setBackground(background: Message.Background = this.style.background): Promise<void> {
+    winston.log('silly', `Saving background for user ${this.username}`);
     var data = _.extend(this.style.background, background);
     data['lo'] = this.username;
     data['p'] = this.password;
@@ -210,11 +211,14 @@ class User {
         }
       }, (error, response, body) => {
         if (error) {
+          winston.log('error', `Error while saving background for user ${this.username}: ${error}`);
           return reject(error);
         }
         if (response.statusCode !== 200) {
+          winston.log('error', `Error while saving background for user ${this.username}: ${response.statusMessage}\nAre you authenticated?`);
           return reject(new Error(response.statusMessage));
         }
+        winston.log('verbose', `Saved background for user ${this.username}`);
         resolve();
       });
     });

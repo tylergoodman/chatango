@@ -44,7 +44,7 @@ class Connection extends events.EventEmitter {
     });
 
     this.socket.on('end', () => {
-      winston.log('verbose', `Received FIN packet from ${this.address}`);
+      winston.log('debug', `Received FIN packet from ${this.address}`);
       this.emit('end');
     });
 
@@ -68,7 +68,7 @@ class Connection extends events.EventEmitter {
       winston.log('info', `Connection to ${this.address} closed`);
       this.emit('close', had_error);
       if (this.auto_reconnect) {
-        winston.log('verbose', `Attempting to reconnect to ${this.address}`);
+        winston.log('info', `Attempting to reconnect to ${this.address}`);
         this.connect();
       }
     });

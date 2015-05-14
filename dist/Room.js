@@ -154,7 +154,7 @@ var Room = (function (_super) {
                 return "s" + weight[0] + ".chatango.com";
             }
         }
-        throw new Error("Couldn't find host server for room name: " + room_name);
+        throw new Error("Couldn't find host server for room name " + room_name);
     };
     return Room;
 })(events.EventEmitter);
