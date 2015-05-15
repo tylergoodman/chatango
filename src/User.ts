@@ -1,9 +1,11 @@
+/// <reference path="../typings/node/node.d.ts" />
 /// <reference path="../typings/request/request.d.ts" />
 /// <reference path="../typings/xml2js/xml2js.d.ts" />
 /// <reference path="../typings/bluebird/bluebird.d.ts" />
 /// <reference path="../typings/winston/winston.d.ts" />
 /// <reference path="../typings/lodash/lodash.d.ts" />
 
+import fs = require('fs');
 import request = require('request');
 import xml2js = require('xml2js');
 import Promise = require('bluebird');
@@ -219,6 +221,36 @@ class User {
           return reject(new Error(response.statusMessage));
         }
         winston.log('verbose', `Saved background for user ${this.username}`);
+        resolve();
+      });
+    });
+  }
+
+  setBackgroundImage(stream: fs.ReadStream): Promise<any> {
+    winston.log('silly', `Saving background image for user ${this.username}`);
+    return new Promise((resolve, reject) => {
+      request({
+        url: 'http://chatango.com/updatemsgbg',
+        method: 'POST',
+        jar: this.cookies,
+        headers: {
+          'User-Agent': 'ChatangoJS'
+        },
+        formData: {
+          'lo': this.username,
+          'p': this.password,
+          'Filedata': stream
+        }
+      }, (error, response, body) => {
+        if (error) {
+          winston.log('error', `Error while saving background image for user ${this.username}: ${error}`);
+          return reject(error);
+        }
+        if (response.statusCode !== 200) {
+          winston.log('error', `Error while saving background for user ${this.username}: ${response.statusMessage}\nAre you authenticated?`);
+          return reject(new Error(response.statusMessage));
+        }
+        winston.log('verbose', `Set background image for user ${this.username}`);
         resolve();
       });
     });

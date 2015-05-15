@@ -1,3 +1,4 @@
+/// <reference path="../typings/node/node.d.ts" />
 /// <reference path="../typings/request/request.d.ts" />
 /// <reference path="../typings/xml2js/xml2js.d.ts" />
 /// <reference path="../typings/bluebird/bluebird.d.ts" />
@@ -183,6 +184,36 @@ var User = (function () {
                     return reject(new Error(response.statusMessage));
                 }
                 winston.log('verbose', "Saved background for user " + _this.username);
+                resolve();
+            });
+        });
+    };
+    User.prototype.setBackgroundImage = function (stream) {
+        var _this = this;
+        winston.log('silly', "Saving background image for user " + this.username);
+        return new Promise(function (resolve, reject) {
+            request({
+                url: 'http://chatango.com/updatemsgbg',
+                method: 'POST',
+                jar: _this.cookies,
+                headers: {
+                    'User-Agent': 'ChatangoJS'
+                },
+                formData: {
+                    'lo': _this.username,
+                    'p': _this.password,
+                    'Filedata': stream
+                }
+            }, function (error, response, body) {
+                if (error) {
+                    winston.log('error', "Error while saving background image for user " + _this.username + ": " + error);
+                    return reject(error);
+                }
+                if (response.statusCode !== 200) {
+                    winston.log('error', "Error while saving background for user " + _this.username + ": " + response.statusMessage + "\nAre you authenticated?");
+                    return reject(new Error(response.statusMessage));
+                }
+                winston.log('verbose', "Set background image for user " + _this.username);
                 resolve();
             });
         });

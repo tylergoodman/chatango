@@ -1,8 +1,10 @@
+/// <reference path="../typings/node/node.d.ts" />
 /// <reference path="../typings/request/request.d.ts" />
 /// <reference path="../typings/xml2js/xml2js.d.ts" />
 /// <reference path="../typings/bluebird/bluebird.d.ts" />
 /// <reference path="../typings/winston/winston.d.ts" />
 /// <reference path="../typings/lodash/lodash.d.ts" />
+import fs = require('fs');
 import request = require('request');
 import Promise = require('bluebird');
 import Message = require('./Message');
@@ -20,6 +22,7 @@ declare class User {
     getStyle(): Promise<Message.Style>;
     getBackground(): Promise<Message.Background>;
     setBackground(background?: Message.Background): Promise<void>;
+    setBackgroundImage(stream: fs.ReadStream): Promise<any>;
     getBackgroundImage(): request.Request;
     static getBackgroundImage(username: string): request.Request;
     getAvatar(): request.Request;

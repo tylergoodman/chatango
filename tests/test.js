@@ -8,6 +8,7 @@
 /// <reference path="../typings/Room.d.ts" />
 // TODO - these references aren't working, fix them
 
+var fs = require('fs');
 
 var should = require('should');
 var winston = require('winston');
@@ -95,6 +96,7 @@ describe('User', function () {
     .catch(done);
   });
   it('set background', function (done) {
+    // sometimes this test will fail if chatango doesn't update in time
     var user = new User('ttttestuser', 'asdf1234');
     var new_bgc = _.chain(_.times(6, _.partial(_.random, 65, 70, false))).map(function (n) { return String.fromCharCode(n); }).join('').value();
     user
@@ -109,6 +111,19 @@ describe('User', function () {
       })
       .then(function (background) {
         background.should.have.property('bgc', new_bgc);
+        done();
+      })
+      .catch(done);
+  });
+  it('set background image', function (done) {
+    var user = new User('ttttestuser', 'asdf1234');
+    var file = fs.createReadStream('./test/Cute-Red-Panda-1152x2048.jpg');
+    user
+      .init()
+      .then(function () {
+        return user.setBackgroundImage(file);
+      })
+      .then(function () {
         done();
       })
       .catch(done);

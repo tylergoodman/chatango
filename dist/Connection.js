@@ -36,7 +36,7 @@ var Connection = (function (_super) {
             _this.emit('data', data);
         });
         this.socket.on('end', function () {
-            winston.log('verbose', "Received FIN packet from " + _this.address);
+            winston.log('debug', "Received FIN packet from " + _this.address);
             _this.emit('end');
         });
         this.socket.on('timeout', function () {
@@ -56,7 +56,7 @@ var Connection = (function (_super) {
             winston.log('info', "Connection to " + _this.address + " closed");
             _this.emit('close', had_error);
             if (_this.auto_reconnect) {
-                winston.log('verbose', "Attempting to reconnect to " + _this.address);
+                winston.log('info', "Attempting to reconnect to " + _this.address);
                 _this.connect();
             }
         });
