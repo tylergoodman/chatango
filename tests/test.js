@@ -54,7 +54,7 @@ describe('User', function () {
       background.ialp.should.be.Number.within(0, 100);
       background.tile.should.be.Number.within(0, 1);
       background.bgalp.should.be.Number.within(0, 100);
-      background.bgc.should.be.String.with.length(6).and.match(/^[0-9a-fA-F]{6}$/);
+      background.bgc.should.be.String.with.length(6).and.match(/^|[0-9a-fA-F]{6}$/);
       background.useimg.should.be.Number.within(0, 1);
       background.hasrec.should.be.Number.within(0, 1);
       background.isvid.should.be.Number.within(0, 1);
@@ -117,7 +117,7 @@ describe('User', function () {
   });
   it('set background image', function (done) {
     var user = new User('ttttestuser', 'asdf1234');
-    var file = fs.createReadStream('./test/Cute-Red-Panda-1152x2048.jpg');
+    var file = fs.createReadStream('./tests/Cute_Red_Panda_1152x2048.jpg');
     user
       .init()
       .then(function () {
