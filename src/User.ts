@@ -19,27 +19,8 @@ class User {
   password: string = '';
   type: User.Type;
 
-  style: Message.Style = {
-    name: '',
-    font: {
-      color: '',
-      size: 11,
-      face: Message.Font.Arial,
-      bold: false,
-      italics: false,
-      underline: false
-    },
-    background: {
-      align: 'tl',
-      ialp: 100,
-      tile: 1,
-      bgalp: 100,
-      bgc: '',
-      useimg: 0,
-      hasrec: 0,
-      isvid: 0
-    }
-  };
+  style: Message.Style = {};
+  background: Message.Background = {};
 
   cookies: request.CookieJar = request.jar();
 
@@ -131,57 +112,93 @@ class User {
   }
 
   getStyle(): Promise<Message.Style> {
-    winston.log('silly', `Getting style data for user ${this.username}`);
-    return new Promise<Message.StyleAPIGet>((resolve, reject) => {
+    winston.log('silly', `Getting style for user ${this.username}`);
+    return new Promise<Message.Style>((resolve, reject) => {
       request(`${this.endpoint_url}/msgstyles.json`, (error, response, body) => {
         if (error) {
-          winston.log('error', `Error while retrieving style data for user ${this.username}`);
+          winston.log('error', `Error while retrieving style for user ${this.username}`);
           return reject(error);
         }
-        winston.log('silly', `Retrieved style data for user ${this.username}`);
-        resolve(JSON.parse(body));
+        if (response.statusCode !== 200) {
+          winston.log('error', `Error while retrieving style for user ${this.username}: ${response.statusMessage}`);
+          return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
+        }
+        winston.log('verbose', `Retrieved style for user ${this.username}`);
+        this.style = JSON.parse(body);
+        this.style.fontSize = Number(this.style.fontSize);
+        this.style.usebackground = Number(this.style.usebackground);
+        resolve(this.style);
       });
     })
-    .then((style) => {
-      this.style.name = style.nameColor;
-      this.style.font.color = style.textColor;
-      this.style.font.size = Number(style.fontSize);
-      this.style.font.face = Message.Font[style.fontFamily];
-      this.style.font.bold = style.bold;
-      this.style.font.italics = style.italics;
-      this.style.font.underline = style.underline;
-      winston.log('verbose', `Retrieved style for user ${this.username}`);
-      return this.style;
+  }
+
+  setStyle(style: Message.Style = {}): Promise<Message.Style> {
+    winston.log('silly', `Saving style for user ${this.username}`);
+    style = _.extend(this.style, style);
+
+    var data = _.transform(style, (result, value, key) => {
+      result[key] = String(value);
+    });
+
+    return new Promise<Message.Style>((resolve, reject) => {
+      request({
+        url: 'http://chatango.com/updatemsgstyles',
+        method: 'POST',
+        jar: this.cookies,
+        formData: _.extend({
+          'lo': this.username,
+          'p': this.password,
+        }, data),
+        headers: {
+          'User-Agent': 'ChatangoJS',
+        }
+      }, (error, response, body) => {
+        if (error) {
+          winston.log('error', `Error while saving style for user ${this.username}: ${error}`);
+          return reject(error);
+        }
+        if (response.statusCode !== 200) {
+          winston.log('error', `Error while saving style for user ${this.username}: ${response.statusMessage}`);
+          return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
+        }
+        winston.log('verbose', `Saved style for user ${this.username}`);
+        this.style = style;
+        resolve(style);
+      });
     });
   }
 
   getBackground(): Promise<Message.Background> {
-    winston.log('silly', `Getting background xml for user ${this.username}`);
+    winston.log('silly', `Getting background for user ${this.username}`);
     return new Promise<string>((resolve, reject) => {
       request(`${this.endpoint_url}/msgbg.xml`, (error, response, body) => {
         if (error) {
-          winston.log('error', `Error while retrieving background xml for user ${this.username}`);
+          winston.log('error', `Error while retrieving background for user ${this.username}`);
           return reject(error);
         }
-        winston.log('silly', `Retrieved background xml for user ${this.username}`);
+        if (response.statusCode !== 200) {
+          winston.log('error', `Error while retrieving background for user ${this.username}: ${response.statusMessage}`);
+          return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
+        }
+        winston.log('silly', `Retrieved background for user ${this.username}`);
         resolve(body);
       });
     })
     .then((body) => {
-      winston.log('silly', `Parsing background xml for ${this.username}`);
+      winston.log('silly', `Parsing background for ${this.username}`);
       return new Promise<Message.BackgroundAPIGet>((resolve, reject) => {
         xml2js.parseString(body, (err, result) => {
           if (err) {
-            winston.log('error', `Error while parsing background xml for user ${this.username}`);
+            winston.log('error', `Error while parsing background for user ${this.username}`);
             return reject(err);
           }
-          winston.log('silly', `Parsed background xml for user ${this.username}`);
+          winston.log('silly', `Parsed background for user ${this.username}`);
           resolve(result);
         });
       });
     })
     .then((result) => {
-      this.style.background = {
+      this.background = {
         'align': result.bgi.$.align,
         'ialp': Number(result.bgi.$.ialp),
         'tile': Number(result.bgi.$.tile),
@@ -192,22 +209,23 @@ class User {
         'isvid': Number(result.bgi.$.isvid),
       };
       winston.log('verbose', `Retrieved background for user ${this.username}`);
-      return this.style.background;
+      return this.background;
     });
   }
 
-  setBackground(background: Message.Background = this.style.background): Promise<void> {
+  setBackground(background: Message.Background = {}): Promise<Message.Background> {
     winston.log('silly', `Saving background for user ${this.username}`);
-    var data = _.extend(this.style.background, background);
-    data['lo'] = this.username;
-    data['p'] = this.password;
+    background = _.extend(this.background, background);
 
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<Message.Background>((resolve, reject) => {
       request({
         url: 'http://chatango.com/updatemsgbg',
         method: 'POST',
         jar: this.cookies,
-        form: data,
+        form: _.extend(background, {
+          'lo': this.username,
+          'p': this.password
+        }),
         headers: {
           'User-Agent': 'ChatangoJS'
         }
@@ -217,19 +235,20 @@ class User {
           return reject(error);
         }
         if (response.statusCode !== 200) {
-          winston.log('error', `Error while saving background for user ${this.username}: ${response.statusMessage}\nAre you authenticated?`);
-          return reject(new Error(response.statusMessage));
+          winston.log('error', `Error while saving background for user ${this.username}: ${response.statusMessage}`);
+          return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
         }
         winston.log('verbose', `Saved background for user ${this.username}`);
-        resolve();
+        this.background = background;
+        resolve(background);
       });
     });
   }
 
-  setBackgroundImage(stream: fs.ReadStream): Promise<any> {
+  setBackgroundImage(stream: fs.ReadStream): Promise<void> {
     winston.log('silly', `Saving background image for user ${this.username}`);
-    return new Promise((resolve, reject) => {
-      request({
+    return new Promise<void>((resolve, reject) => {
+      var r = request({
         url: 'http://chatango.com/updatemsgbg',
         method: 'POST',
         jar: this.cookies,
@@ -248,7 +267,7 @@ class User {
         }
         if (response.statusCode !== 200) {
           winston.log('error', `Error while saving background for user ${this.username}: ${response.statusMessage}\nAre you authenticated?`);
-          return reject(new Error(response.statusMessage));
+          return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
         }
         winston.log('verbose', `Set background image for user ${this.username}`);
         resolve();

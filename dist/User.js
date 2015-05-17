@@ -9,34 +9,14 @@ var xml2js = require('xml2js');
 var Promise = require('bluebird');
 var winston = require('winston');
 var _ = require('lodash');
-var Message = require('./Message');
 var User = (function () {
     function User(username, password) {
         if (username === void 0) { username = ''; }
         if (password === void 0) { password = ''; }
         this.username = '';
         this.password = '';
-        this.style = {
-            name: '',
-            font: {
-                color: '',
-                size: 11,
-                face: Message.Font.Arial,
-                bold: false,
-                italics: false,
-                underline: false
-            },
-            background: {
-                align: 'tl',
-                ialp: 100,
-                tile: 1,
-                bgalp: 100,
-                bgc: '',
-                useimg: 0,
-                hasrec: 0,
-                isvid: 0
-            }
-        };
+        this.style = {};
+        this.background = {};
         this.cookies = request.jar();
         this.username = username;
         this.password = password;
@@ -94,57 +74,92 @@ var User = (function () {
     };
     User.prototype.getStyle = function () {
         var _this = this;
-        winston.log('silly', "Getting style data for user " + this.username);
+        winston.log('silly', "Getting style for user " + this.username);
         return new Promise(function (resolve, reject) {
             request(_this.endpoint_url + "/msgstyles.json", function (error, response, body) {
                 if (error) {
-                    winston.log('error', "Error while retrieving style data for user " + _this.username);
+                    winston.log('error', "Error while retrieving style for user " + _this.username);
                     return reject(error);
                 }
-                winston.log('silly', "Retrieved style data for user " + _this.username);
-                resolve(JSON.parse(body));
+                if (response.statusCode !== 200) {
+                    winston.log('error', "Error while retrieving style for user " + _this.username + ": " + response.statusMessage);
+                    return reject(new Error(response.statusCode + ": " + response.statusMessage));
+                }
+                winston.log('verbose', "Retrieved style for user " + _this.username);
+                _this.style = JSON.parse(body);
+                _this.style.fontSize = Number(_this.style.fontSize);
+                _this.style.usebackground = Number(_this.style.usebackground);
+                resolve(_this.style);
             });
-        })
-            .then(function (style) {
-            _this.style.name = style.nameColor;
-            _this.style.font.color = style.textColor;
-            _this.style.font.size = Number(style.fontSize);
-            _this.style.font.face = Message.Font[style.fontFamily];
-            _this.style.font.bold = style.bold;
-            _this.style.font.italics = style.italics;
-            _this.style.font.underline = style.underline;
-            winston.log('verbose', "Retrieved style for user " + _this.username);
-            return _this.style;
+        });
+    };
+    User.prototype.setStyle = function (style) {
+        var _this = this;
+        if (style === void 0) { style = {}; }
+        winston.log('silly', "Saving style for user " + this.username);
+        style = _.extend(this.style, style);
+        var data = _.transform(style, function (result, value, key) {
+            result[key] = String(value);
+        });
+        return new Promise(function (resolve, reject) {
+            request({
+                url: 'http://chatango.com/updatemsgstyles',
+                method: 'POST',
+                jar: _this.cookies,
+                formData: _.extend({
+                    'lo': _this.username,
+                    'p': _this.password,
+                }, data),
+                headers: {
+                    'User-Agent': 'ChatangoJS',
+                }
+            }, function (error, response, body) {
+                if (error) {
+                    winston.log('error', "Error while saving style for user " + _this.username + ": " + error);
+                    return reject(error);
+                }
+                if (response.statusCode !== 200) {
+                    winston.log('error', "Error while saving style for user " + _this.username + ": " + response.statusMessage);
+                    return reject(new Error(response.statusCode + ": " + response.statusMessage));
+                }
+                winston.log('verbose', "Saved style for user " + _this.username);
+                _this.style = style;
+                resolve(style);
+            });
         });
     };
     User.prototype.getBackground = function () {
         var _this = this;
-        winston.log('silly', "Getting background xml for user " + this.username);
+        winston.log('silly', "Getting background for user " + this.username);
         return new Promise(function (resolve, reject) {
             request(_this.endpoint_url + "/msgbg.xml", function (error, response, body) {
                 if (error) {
-                    winston.log('error', "Error while retrieving background xml for user " + _this.username);
+                    winston.log('error', "Error while retrieving background for user " + _this.username);
                     return reject(error);
                 }
-                winston.log('silly', "Retrieved background xml for user " + _this.username);
+                if (response.statusCode !== 200) {
+                    winston.log('error', "Error while retrieving background for user " + _this.username + ": " + response.statusMessage);
+                    return reject(new Error(response.statusCode + ": " + response.statusMessage));
+                }
+                winston.log('silly', "Retrieved background for user " + _this.username);
                 resolve(body);
             });
         })
             .then(function (body) {
-            winston.log('silly', "Parsing background xml for " + _this.username);
+            winston.log('silly', "Parsing background for " + _this.username);
             return new Promise(function (resolve, reject) {
                 xml2js.parseString(body, function (err, result) {
                     if (err) {
-                        winston.log('error', "Error while parsing background xml for user " + _this.username);
+                        winston.log('error', "Error while parsing background for user " + _this.username);
                         return reject(err);
                     }
-                    winston.log('silly', "Parsed background xml for user " + _this.username);
+                    winston.log('silly', "Parsed background for user " + _this.username);
                     resolve(result);
                 });
             });
         })
             .then(function (result) {
-            _this.style.background = {
+            _this.background = {
                 'align': result.bgi.$.align,
                 'ialp': Number(result.bgi.$.ialp),
                 'tile': Number(result.bgi.$.tile),
@@ -155,22 +170,23 @@ var User = (function () {
                 'isvid': Number(result.bgi.$.isvid),
             };
             winston.log('verbose', "Retrieved background for user " + _this.username);
-            return _this.style.background;
+            return _this.background;
         });
     };
     User.prototype.setBackground = function (background) {
         var _this = this;
-        if (background === void 0) { background = this.style.background; }
+        if (background === void 0) { background = {}; }
         winston.log('silly', "Saving background for user " + this.username);
-        var data = _.extend(this.style.background, background);
-        data['lo'] = this.username;
-        data['p'] = this.password;
+        background = _.extend(this.background, background);
         return new Promise(function (resolve, reject) {
             request({
                 url: 'http://chatango.com/updatemsgbg',
                 method: 'POST',
                 jar: _this.cookies,
-                form: data,
+                form: _.extend(background, {
+                    'lo': _this.username,
+                    'p': _this.password
+                }),
                 headers: {
                     'User-Agent': 'ChatangoJS'
                 }
@@ -180,11 +196,12 @@ var User = (function () {
                     return reject(error);
                 }
                 if (response.statusCode !== 200) {
-                    winston.log('error', "Error while saving background for user " + _this.username + ": " + response.statusMessage + "\nAre you authenticated?");
-                    return reject(new Error(response.statusMessage));
+                    winston.log('error', "Error while saving background for user " + _this.username + ": " + response.statusMessage);
+                    return reject(new Error(response.statusCode + ": " + response.statusMessage));
                 }
                 winston.log('verbose', "Saved background for user " + _this.username);
-                resolve();
+                _this.background = background;
+                resolve(background);
             });
         });
     };
@@ -192,7 +209,7 @@ var User = (function () {
         var _this = this;
         winston.log('silly', "Saving background image for user " + this.username);
         return new Promise(function (resolve, reject) {
-            request({
+            var r = request({
                 url: 'http://chatango.com/updatemsgbg',
                 method: 'POST',
                 jar: _this.cookies,
@@ -211,7 +228,7 @@ var User = (function () {
                 }
                 if (response.statusCode !== 200) {
                     winston.log('error', "Error while saving background for user " + _this.username + ": " + response.statusMessage + "\nAre you authenticated?");
-                    return reject(new Error(response.statusMessage));
+                    return reject(new Error(response.statusCode + ": " + response.statusMessage));
                 }
                 winston.log('verbose', "Set background image for user " + _this.username);
                 resolve();

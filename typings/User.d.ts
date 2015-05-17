@@ -13,6 +13,7 @@ declare class User {
     password: string;
     type: User.Type;
     style: Message.Style;
+    background: Message.Background;
     cookies: request.CookieJar;
     static endpoint: string;
     endpoint_url: string;
@@ -20,9 +21,10 @@ declare class User {
     init(): Promise<any>;
     authenticate(): Promise<void>;
     getStyle(): Promise<Message.Style>;
+    setStyle(style?: Message.Style): Promise<Message.Style>;
     getBackground(): Promise<Message.Background>;
-    setBackground(background?: Message.Background): Promise<void>;
-    setBackgroundImage(stream: fs.ReadStream): Promise<any>;
+    setBackground(background?: Message.Background): Promise<Message.Background>;
+    setBackgroundImage(stream: fs.ReadStream): Promise<void>;
     getBackgroundImage(): request.Request;
     static getBackgroundImage(username: string): request.Request;
     getAvatar(): request.Request;

@@ -47,7 +47,7 @@ describe('User', function () {
   it('get background style', function (done) {
     var user = new User('ttttestuser');
     user.getBackground().then(function (background) {
-      user.style.background.should.eql(background);
+      user.background.should.eql(background);
 //      console.log(background);
 
       background.align.should.be.String.with.length(2).and.match(/^(tl|tr|bl|br)$/);
@@ -69,15 +69,15 @@ describe('User', function () {
       user.style.should.eql(style);
 //      console.log(style);
 
-      style.name.should.be.String.and.match(/^|[0-9a-fA-F]{6}$/);
-      style.font.color.should.be.String.and.match(/^|[0-9a-fA-F]{6}$/);
-      style.font.size.should.be.Number.within(9, 22);
-      style.font.face.should.be.String;
+      style.nameColor.should.be.String.and.match(/^|[0-9a-fA-F]{6}$/);
+      style.textColor.should.be.String.and.match(/^|[0-9a-fA-F]{6}$/);
+      style.fontSize.should.be.Number.within(9, 22);
+      style.fontFamily.should.be.String;
       // font should be one of the enumerated fonts
-      Chatango.Message.Font.should.containEql(style.font.face);
-      style.font.bold.should.be.Boolean;
-      style.font.italics.should.be.Boolean;
-      style.font.underline.should.be.Boolean;
+      Chatango.Message.Font.should.containEql(style.fontFamily);
+      style.bold.should.be.Boolean;
+      style.italics.should.be.Boolean;
+      style.underline.should.be.Boolean;
 
       done();
     })
@@ -96,9 +96,8 @@ describe('User', function () {
     .catch(done);
   });
   it('set background', function (done) {
-    // sometimes this test will fail if chatango doesn't update in time
     var user = new User('ttttestuser', 'asdf1234');
-    var new_bgc = _.chain(_.times(6, _.partial(_.random, 65, 70, false))).map(function (n) { return String.fromCharCode(n); }).join('').value();
+    var new_bgc = hexColor();
     user
       .init()
       .then(function () {
@@ -106,10 +105,8 @@ describe('User', function () {
           bgc: new_bgc
         });
       })
-      .then(function () {
-        return user.getBackground();
-      })
       .then(function (background) {
+        user.background.should.containEql(background);
         background.should.have.property('bgc', new_bgc);
         done();
       })
@@ -124,6 +121,23 @@ describe('User', function () {
         return user.setBackgroundImage(file);
       })
       .then(function () {
+        done();
+      })
+      .catch(done);
+  });
+  it('set style', function (done) {
+    var user = new User('ttttestuser', 'asdf1234');
+    var new_name_color = hexColor();
+    user
+      .init()
+      .then(function () {
+        return user.setStyle({
+          nameColor: new_name_color
+        });
+      })
+      .then(function (style) {
+        user.style.should.containEql(style);
+        style.should.have.property('nameColor', new_name_color);
         done();
       })
       .catch(done);
@@ -162,3 +176,13 @@ describe('User', function () {
 ////      });
 ////  });
 //});
+
+function hexColor() {
+  return _.chain(_.times(6, _.partial(_.random, 65, 70, false))).map(function (n) { return String.fromCharCode(n); }).join('').value();
+}
+
+function wait(milliseconds) {
+  return new Promise(function (resolve, reject) {
+    setTimeout(resolve, milliseconds);
+  });
+}

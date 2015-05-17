@@ -2,37 +2,25 @@ declare class Message {
 }
 declare module Message {
     interface Style {
-        name?: string;
-        font?: {
-            color: string;
-            size: number;
-            face: Message.Font;
-            bold: boolean;
-            italics: boolean;
-            underline: boolean;
-        };
-        background?: Background;
-    }
-    interface StyleAPIGet {
-        stylesOn: boolean;
-        fontFamily: string;
-        fontSize: string;
-        usebackground: number;
-        textColor: string;
-        nameColor: string;
-        bold: boolean;
-        italics: boolean;
-        underline: boolean;
+        stylesOn?: boolean;
+        fontFamily?: string;
+        fontSize?: number;
+        usebackground?: number;
+        textColor?: string;
+        nameColor?: string;
+        bold?: boolean;
+        italics?: boolean;
+        underline?: boolean;
     }
     interface Background {
-        align: string;
-        ialp: number;
-        tile: number;
-        bgalp: number;
-        bgc: string;
-        useimg: number;
-        hasrec: number;
-        isvid: number;
+        align?: string;
+        ialp?: number;
+        tile?: number;
+        bgalp?: number;
+        bgc?: string;
+        useimg?: number;
+        hasrec?: number;
+        isvid?: number;
     }
     interface BackgroundAPIGet {
         bgi: {

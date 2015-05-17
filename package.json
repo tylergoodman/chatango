@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "bluebird": "^2.9.25",
+    "form-data": "git://github.com/tylergoodman/node-form-data",
     "lodash": "^3.8.0",
     "request": "^2.55.0",
     "winston": "^1.0.0",
