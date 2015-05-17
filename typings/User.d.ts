@@ -21,8 +21,10 @@ declare class User {
     init(): Promise<any>;
     authenticate(): Promise<void>;
     getStyle(): Promise<Message.Style>;
+    static getStyle(username: string): Promise<Message.Style>;
     setStyle(style?: Message.Style): Promise<Message.Style>;
     getBackground(): Promise<Message.Background>;
+    static getBackground(username: string): Promise<Message.Background>;
     setBackground(background?: Message.Background): Promise<Message.Background>;
     setBackgroundImage(stream: fs.ReadStream): Promise<void>;
     getBackgroundImage(): request.Request;

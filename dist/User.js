@@ -93,6 +93,9 @@ var User = (function () {
             });
         });
     };
+    User.getStyle = function (username) {
+        return this.prototype.getStyle.call({ username: username });
+    };
     User.prototype.setStyle = function (style) {
         var _this = this;
         if (style === void 0) { style = {}; }
@@ -172,6 +175,9 @@ var User = (function () {
             winston.log('verbose', "Retrieved background for user " + _this.username);
             return _this.background;
         });
+    };
+    User.getBackground = function (username) {
+        return this.prototype.getBackground.call({ username: username });
     };
     User.prototype.setBackground = function (background) {
         var _this = this;

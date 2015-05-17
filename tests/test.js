@@ -1,22 +1,19 @@
-/// <reference path="../typings/bluebird/bluebird.d.ts" />
-/// <reference path="../typings/mocha/mocha.d.ts" />
-/// <reference path="../typings/lodash/lodash.d.ts" />
-
-/// <reference path="../typings/Connection.d.ts" />
-/// <reference path="../typings/Message.d.ts" />
-/// <reference path="../typings/User.d.ts" />
-/// <reference path="../typings/Room.d.ts" />
-// TODO - these references aren't working, fix them
-
 var fs = require('fs');
 
 var should = require('should');
 var winston = require('winston');
 var _ = require('lodash');
+
 winston.cli();
 winston.level = 'verbose';
 
-var Chatango = require('../dist');
+//var Chatango = require('../dist');
+var Chatango = {
+  Connection: require('../dist/Connection'),
+  User: require('../dist/User'),
+  Message: require('../dist/Message'),
+  Room: require('../dist/Room'),
+}
 
 describe('Connection', function () {
   var Connection = Chatango.Connection;

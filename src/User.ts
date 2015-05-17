@@ -132,6 +132,10 @@ class User {
     })
   }
 
+  static getStyle(username: string): Promise<Message.Style> {
+    return this.prototype.getStyle.call({ username: username });
+  }
+
   setStyle(style: Message.Style = {}): Promise<Message.Style> {
     winston.log('silly', `Saving style for user ${this.username}`);
     style = _.extend(this.style, style);
@@ -211,6 +215,10 @@ class User {
       winston.log('verbose', `Retrieved background for user ${this.username}`);
       return this.background;
     });
+  }
+
+  static getBackground(username: string): Promise<Message.Background> {
+    return this.prototype.getBackground.call({ username: username });
   }
 
   setBackground(background: Message.Background = {}): Promise<Message.Background> {
