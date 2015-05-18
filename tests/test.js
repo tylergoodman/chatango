@@ -51,7 +51,7 @@ describe('User', function () {
       background.ialp.should.be.Number.within(0, 100);
       background.tile.should.be.Number.within(0, 1);
       background.bgalp.should.be.Number.within(0, 100);
-      background.bgc.should.be.String.with.length(6).and.match(/^|[0-9a-fA-F]{6}$/);
+      background.bgc.should.be.String.and.match(/^|[0-9a-fA-F]{6}$/);
       background.useimg.should.be.Number.within(0, 1);
       background.hasrec.should.be.Number.within(0, 1);
       background.isvid.should.be.Number.within(0, 1);

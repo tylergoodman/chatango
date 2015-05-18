@@ -145,35 +145,45 @@ var User = (function () {
                     return reject(new Error(response.statusCode + ": " + response.statusMessage));
                 }
                 winston.log('silly', "Retrieved background for user " + _this.username);
-                resolve(body);
+                resolve(response.toJSON());
             });
         })
-            .then(function (body) {
+            .then(function (response) {
             winston.log('silly', "Parsing background for " + _this.username);
             return new Promise(function (resolve, reject) {
-                xml2js.parseString(body, function (err, result) {
+                if (response.headers['content-type'] === 'image/jpeg') {
+                    winston.log('warn', "User " + _this.username + " has no background data. Using default.");
+                    _this.background = {
+                        'align': 'tl',
+                        'ialp': 100,
+                        'tile': 1,
+                        'bgalp': 100,
+                        'bgc': '',
+                        'useimg': 0,
+                        'hasrec': 0,
+                        'isvid': 0,
+                    };
+                    return resolve(_this.background);
+                }
+                xml2js.parseString(response.body, function (err, result) {
                     if (err) {
                         winston.log('error', "Error while parsing background for user " + _this.username);
                         return reject(err);
                     }
-                    winston.log('silly', "Parsed background for user " + _this.username);
-                    resolve(result);
+                    winston.log('verbose', "Retrieved background for user " + _this.username);
+                    _this.background = {
+                        'align': result.bgi.$.align,
+                        'ialp': Number(result.bgi.$.ialp),
+                        'tile': Number(result.bgi.$.tile),
+                        'bgalp': Number(result.bgi.$.bgalp),
+                        'bgc': result.bgi.$.bgc,
+                        'useimg': Number(result.bgi.$.useimg),
+                        'hasrec': Number(result.bgi.$.hasrec),
+                        'isvid': Number(result.bgi.$.isvid),
+                    };
+                    resolve(_this.background);
                 });
             });
-        })
-            .then(function (result) {
-            _this.background = {
-                'align': result.bgi.$.align,
-                'ialp': Number(result.bgi.$.ialp),
-                'tile': Number(result.bgi.$.tile),
-                'bgalp': Number(result.bgi.$.bgalp),
-                'bgc': result.bgi.$.bgc,
-                'useimg': Number(result.bgi.$.useimg),
-                'hasrec': Number(result.bgi.$.hasrec),
-                'isvid': Number(result.bgi.$.isvid),
-            };
-            winston.log('verbose', "Retrieved background for user " + _this.username);
-            return _this.background;
         });
     };
     User.getBackground = function (username) {
@@ -215,7 +225,7 @@ var User = (function () {
         var _this = this;
         winston.log('silly', "Saving background image for user " + this.username);
         return new Promise(function (resolve, reject) {
-            var r = request({
+            request({
                 url: 'http://chatango.com/updatemsgbg',
                 method: 'POST',
                 jar: _this.cookies,

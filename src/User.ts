@@ -174,7 +174,7 @@ class User {
 
   getBackground(): Promise<Message.Background> {
     winston.log('silly', `Getting background for user ${this.username}`);
-    return new Promise<string>((resolve, reject) => {
+    return new Promise<any>((resolve, reject) => {
       request(`${this.endpoint_url}/msgbg.xml`, (error, response, body) => {
         if (error) {
           winston.log('error', `Error while retrieving background for user ${this.username}`);
@@ -185,35 +185,45 @@ class User {
           return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
         }
         winston.log('silly', `Retrieved background for user ${this.username}`);
-        resolve(body);
+        resolve(response.toJSON());
       });
     })
-    .then((body) => {
+    .then((response) => {
       winston.log('silly', `Parsing background for ${this.username}`);
-      return new Promise<Message.BackgroundAPIGet>((resolve, reject) => {
-        xml2js.parseString(body, (err, result) => {
+      return new Promise<Message.Background>((resolve, reject) => {
+        if (response.headers['content-type'] === 'image/jpeg') {
+          winston.log('warn', `User ${this.username} has no background data. Using default.`);
+          this.background = {
+            'align': 'tl',
+            'ialp': 100,
+            'tile': 1,
+            'bgalp': 100,
+            'bgc': '',
+            'useimg': 0,
+            'hasrec': 0,
+            'isvid': 0,
+          };
+          return resolve(this.background);
+        }
+        xml2js.parseString(response.body, (err, result) => {
           if (err) {
             winston.log('error', `Error while parsing background for user ${this.username}`);
             return reject(err);
           }
-          winston.log('silly', `Parsed background for user ${this.username}`);
-          resolve(result);
+          winston.log('verbose', `Retrieved background for user ${this.username}`);
+          this.background = {
+            'align': result.bgi.$.align,
+            'ialp': Number(result.bgi.$.ialp),
+            'tile': Number(result.bgi.$.tile),
+            'bgalp': Number(result.bgi.$.bgalp),
+            'bgc': result.bgi.$.bgc,
+            'useimg': Number(result.bgi.$.useimg),
+            'hasrec': Number(result.bgi.$.hasrec),
+            'isvid': Number(result.bgi.$.isvid),
+          };
+          resolve(this.background);
         });
       });
-    })
-    .then((result) => {
-      this.background = {
-        'align': result.bgi.$.align,
-        'ialp': Number(result.bgi.$.ialp),
-        'tile': Number(result.bgi.$.tile),
-        'bgalp': Number(result.bgi.$.bgalp),
-        'bgc': result.bgi.$.bgc,
-        'useimg': Number(result.bgi.$.useimg),
-        'hasrec': Number(result.bgi.$.hasrec),
-        'isvid': Number(result.bgi.$.isvid),
-      };
-      winston.log('verbose', `Retrieved background for user ${this.username}`);
-      return this.background;
     });
   }
 
@@ -256,7 +266,7 @@ class User {
   setBackgroundImage(stream: fs.ReadStream): Promise<void> {
     winston.log('silly', `Saving background image for user ${this.username}`);
     return new Promise<void>((resolve, reject) => {
-      var r = request({
+      request({
         url: 'http://chatango.com/updatemsgbg',
         method: 'POST',
         jar: this.cookies,
