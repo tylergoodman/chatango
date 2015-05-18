@@ -138,7 +138,9 @@ class User {
 
   setStyle(style: Message.Style = {}): Promise<Message.Style> {
     winston.log('silly', `Saving style for user ${this.username}`);
-    style = _.extend(this.style, style);
+
+    // because typescript didn't infer correctly...
+    style = _.extend<{}, Message.Style, Message.Style, {}, Message.Style>(this.style, style);
 
     var data = _.transform(style, (result, value, key) => {
       result[key] = String(value);

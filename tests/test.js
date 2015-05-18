@@ -141,38 +141,39 @@ describe('User', function () {
   });
 });
 
-//describe('Room', function () {
-//  var Room = Chatango.Room;
-//  var User = Chatango.User;
-//
-//  it('#join', function (done) {
-//    var room = new Room('ttttest', new User);
+describe('Room', function () {
+//  var {Room, User} = Chatango;
+  var Room = Chatango.Room;
+  var User = Chatango.User;
+
+  it('#join', function (done) {
+    var room = new Room('ttttest', new User);
+    room
+      .join()
+      .then(function () {
+        return room.leave();
+      })
+      .then(function () {
+        done()
+      });
+  });
+
+//  it('#authenticate', function (done) {
+//    winston.level = 'silly';
+//    var room = new Room('1635132', new User('ttttestuser', 'asdf1234'))
 //    room
 //      .join()
+//      .then(function () {
+//        
+//      })
 //      .then(function () {
 //        return room.leave();
 //      })
 //      .then(function () {
-//        done()
+//        done();
 //      });
 //  });
-//
-////  it('#authenticate', function (done) {
-////    winston.level = 'silly';
-////    var room = new Room('1635132', new User('ttttestuser', 'asdf1234'))
-////    room
-////      .join()
-////      .then(function () {
-////        
-////      })
-////      .then(function () {
-////        return room.leave();
-////      })
-////      .then(function () {
-////        done();
-////      });
-////  });
-//});
+});
 
 function hexColor() {
   return _.chain(_.times(6, _.partial(_.random, 65, 70, false))).map(function (n) { return String.fromCharCode(n); }).join('').value();

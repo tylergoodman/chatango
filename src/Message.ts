@@ -4,6 +4,7 @@ class Message {
 
 module Message {
   export interface Style {
+    [index: string]: any;
     /**
      * whether these styles are shown or not
      */

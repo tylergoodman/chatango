@@ -2,6 +2,7 @@ declare class Message {
 }
 declare module Message {
     interface Style {
+        [index: string]: any;
         stylesOn?: boolean;
         fontFamily?: string;
         fontSize?: number;
