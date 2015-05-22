@@ -309,6 +309,22 @@ class User {
     return this.prototype.getAvatar.call({ username: username });
   }
 
+  static getAnonName(message: string, _id: string): string {
+    // last 4 digits of n_tag and id
+    var n_tag = message.match(/^<n(\d{4})\/>/)[1].split('');
+    var id = _id.slice(-4).split('');
+
+    var ret = [];
+
+    for (var i = 0; i < 4; i++) {
+      // add each digit together
+      var val = parseInt(n_tag[i], 10) + parseInt(id[i], 10);
+      // take the single's digit
+      ret.push(String(val).slice(-1));
+    }
+
+    return 'anon' + ret.join('');
+  }
 }
 
 // typescript pls

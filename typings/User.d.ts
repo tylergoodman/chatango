@@ -31,6 +31,7 @@ declare class User {
     static getBackgroundImage(username: string): request.Request;
     getAvatar(): request.Request;
     static getAvatar(username: string): request.Request;
+    static getAnonName(message: string, _id: string): string;
 }
 declare module User {
     enum Type {

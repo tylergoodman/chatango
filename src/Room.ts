@@ -11,27 +11,32 @@ import winston = require('winston');
 
 import User = require('./User');
 import Connection = require('./Connection');
+import Message = require('./Message');
 
 class Room extends events.EventEmitter {
   name: string;
   user: User;
-  users: User[];
-  connection: Connection;
+  private connection: Connection;
 
-  buffer: string = '';
-  sessionid: string = '';
-  firstSend: boolean = true;
-  has_init: boolean = false;
+  owner: string = ''; // username of the chatango user who owns this room
+  sessionid: string = ''; // session id, made for us if we don't make it (we don't)
+  id: string = ''; // our unique identifier? useless so far
+  moderators: string[] = []; // string array of moderator names. populated on connect (if we have the permission to see them)
+//  users: User[];
+  here_now: number; // number of people in the room
 
-  constructor(name: string, user: User) {
+  private buffer: string = '';
+  private firstSend: boolean = true;
+
+  constructor(name: string, user: User = new User) {
     super();
 
     this.name = name;
     this.user = user;
 
-    this.connection = new Connection(this.getServer());
+    this.connection = new Connection(this._getServer());
 
-    this.connection.on('data', this.receiveData.bind(this));
+    this.connection.on('data', this._receiveData.bind(this));
 
     this.connection.on('connect', () => {
       winston.log('info', `Connected to room ${this.name}`);
@@ -41,7 +46,6 @@ class Room extends events.EventEmitter {
       winston.log('info', `Disconnected from room ${this.name}`);
       this.buffer = '';
       this.firstSend = true;
-      this.has_init = false;
       this.emit('leave');
     });
   }
@@ -56,8 +60,9 @@ class Room extends events.EventEmitter {
           this.send(`bauth:${this.name}:${this.sessionid}::`);
         })
       })
+      .timeout(500)
       .then(() => {
-        return this.authenticate();
+        return this._authenticate();
       });
   }
 
@@ -92,7 +97,7 @@ class Room extends events.EventEmitter {
     return this;
   }
 
-  private authenticate(): Promise<void> {
+  private _authenticate(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       if (this.user.type === User.Type.Anonymous)
         return resolve();
@@ -104,18 +109,67 @@ class Room extends events.EventEmitter {
         this.send(`blogin:${this.user.username}:${this.user.password}`);
 
       this.once('join', resolve);
-    });
+    })
+    .timeout(500);
   }
 
-  private handleCommand(command: string, args: string[]): void {
-    winston.log('verbose', `Received <${command}> command from room ${this.name}`);
+  private _handleCommand(command: string, args: string[]): void {
+    winston.log('debug', `Received <${command}> command from room ${this.name}`);
     switch (command) {
-      case 'inited':
+      case 'ok': // on 'bauth'
+        var [
+          owner, // owner of the room
+          sessionid, // session id (generated for us by Chatango because we didn't send any)
+          session_status, // [N = new, C = not new but not registered, M = not new and registered] (will always be N for us)
+          user_name, // our name in the chat (empty string since we authenticate later)
+          server_time, // unix server time
+          my_ip, // our IP
+          moderators, // semicolon-delineated list of moderators and their permissions
+          server_id // id of the server?
+        ] = args;
+        this.owner = owner;
+        this.sessionid= sessionid; // possibly useless
+        this.id = server_id; // also possibly useless
+        if (moderators) {
+          var mods = moderators.split(';');
+          for (var i = 0, len = mods.length; i < len; i++) {
+            var [name, permissions] = mods[i].split(',');
+            this.moderators.push(name);
+            // permissions is some integer that I will literally never figure out
+          }
+        }
+        break;
+      case 'i': // on 'bauth', messages in immediate history (in reverse order)
+        var [
+          created_at, // unix message creation time
+          user_registered, // name of the message sender (if registered)
+          user_temporary, // name of the message sender (if using a temporary name)
+          user_id,
+          user_id_mod_only,
+          message_id,
+          user_ip,
+          no_idea,
+          no_idea_always_empty,
+          ...raw_message
+        ] = args;
+        var message = Message.parse(raw_message.join(':'));
+        var name = user_registered || user_temporary;
+        if (!name) {
+          name = User.getAnonName(raw_message.join(':'), user_id);
+        }
+        this.emit('history_message', name, message);
+        break;
+      case 'nomore': // emitted if there's history message stream ends before 40 history messages are sent (ie. there are less than 40 immediate history messages)
+        break;
+      case 'inited': // on 'bauth', after history messages stream ends
         this.emit('init');
         break;
       case 'pwdok':
       case 'aliasok':
         this.emit('join');
+        break;
+      case 'n':
+        this.here_now = parseInt(args[0], 16);
         break;
       default:
         winston.log('warn', `Received command that has no handler from room ${this.name}: <${command}>`);
@@ -123,7 +177,7 @@ class Room extends events.EventEmitter {
     }
   }
 
-  private receiveData(data: string): void {
+  private _receiveData(data: string): void {
     this.buffer += data;
     var commands: string[] = this.buffer.split('\0');
     if (commands[commands.length - 1] !== '') {
@@ -136,11 +190,11 @@ class Room extends events.EventEmitter {
     winston.log('silly', `Received commands from room ${this.name}: ${commands}`);
     for (var i = 0; i < commands.length; i++) {
       var [command, ...args] = commands[i].split(':');
-      this.handleCommand(command, args);
+      this._handleCommand(command, args);
     }
   }
 
-  private getServer(room_name: string = this.name): string {
+  private _getServer(room_name: string = this.name): string {
     // magic
     var tsweights: [string, number][] = [
       ['5', 75], ['6', 75], ['7', 75], ['8', 75], ['16', 75], ['17', 75], ['18', 75],

@@ -14,19 +14,23 @@ var Promise = require('bluebird');
 var winston = require('winston');
 var User = require('./User');
 var Connection = require('./Connection');
+var Message = require('./Message');
 var Room = (function (_super) {
     __extends(Room, _super);
     function Room(name, user) {
         var _this = this;
+        if (user === void 0) { user = new User; }
         _super.call(this);
-        this.buffer = '';
+        this.owner = '';
         this.sessionid = '';
+        this.id = '';
+        this.moderators = [];
+        this.buffer = '';
         this.firstSend = true;
-        this.has_init = false;
         this.name = name;
         this.user = user;
-        this.connection = new Connection(this.getServer());
-        this.connection.on('data', this.receiveData.bind(this));
+        this.connection = new Connection(this._getServer());
+        this.connection.on('data', this._receiveData.bind(this));
         this.connection.on('connect', function () {
             winston.log('info', "Connected to room " + _this.name);
         });
@@ -34,7 +38,6 @@ var Room = (function (_super) {
             winston.log('info', "Disconnected from room " + _this.name);
             _this.buffer = '';
             _this.firstSend = true;
-            _this.has_init = false;
             _this.emit('leave');
         });
     }
@@ -49,8 +52,9 @@ var Room = (function (_super) {
                 _this.send("bauth:" + _this.name + ":" + _this.sessionid + "::");
             });
         })
+            .timeout(500)
             .then(function () {
-            return _this.authenticate();
+            return _this._authenticate();
         });
     };
     Room.prototype.leave = function () {
@@ -77,7 +81,7 @@ var Room = (function (_super) {
     Room.prototype.sendMessage = function (content) {
         return this;
     };
-    Room.prototype.authenticate = function () {
+    Room.prototype._authenticate = function () {
         var _this = this;
         return new Promise(function (resolve, reject) {
             if (_this.user.type === User.Type.Anonymous)
@@ -87,11 +91,36 @@ var Room = (function (_super) {
             if (_this.user.type === User.Type.Registered)
                 _this.send("blogin:" + _this.user.username + ":" + _this.user.password);
             _this.once('join', resolve);
-        });
+        })
+            .timeout(500);
     };
-    Room.prototype.handleCommand = function (command, args) {
-        winston.log('verbose', "Received <" + command + "> command from room " + this.name);
+    Room.prototype._handleCommand = function (command, args) {
+        winston.log('debug', "Received <" + command + "> command from room " + this.name);
         switch (command) {
+            case 'ok':
+                var owner = args[0], sessionid = args[1], session_status = args[2], user_name = args[3], server_time = args[4], my_ip = args[5], moderators = args[6], server_id = args[7];
+                this.owner = owner;
+                this.sessionid = sessionid;
+                this.id = server_id;
+                if (moderators) {
+                    var mods = moderators.split(';');
+                    for (var i = 0, len = mods.length; i < len; i++) {
+                        var _a = mods[i].split(','), name = _a[0], permissions = _a[1];
+                        this.moderators.push(name);
+                    }
+                }
+                break;
+            case 'i':
+                var created_at = args[0], user_registered = args[1], user_temporary = args[2], user_id = args[3], user_id_mod_only = args[4], message_id = args[5], user_ip = args[6], no_idea = args[7], no_idea_always_empty = args[8], raw_message = args.slice(9);
+                var message = Message.parse(raw_message.join(':'));
+                var name = user_registered || user_temporary;
+                if (!name) {
+                    name = User.getAnonName(raw_message.join(':'), user_id);
+                }
+                this.emit('history_message', name, message);
+                break;
+            case 'nomore':
+                break;
             case 'inited':
                 this.emit('init');
                 break;
@@ -99,12 +128,15 @@ var Room = (function (_super) {
             case 'aliasok':
                 this.emit('join');
                 break;
+            case 'n':
+                this.here_now = parseInt(args[0], 16);
+                break;
             default:
                 winston.log('warn', "Received command that has no handler from room " + this.name + ": <" + command + ">");
                 break;
         }
     };
-    Room.prototype.receiveData = function (data) {
+    Room.prototype._receiveData = function (data) {
         this.buffer += data;
         var commands = this.buffer.split('\0');
         if (commands[commands.length - 1] !== '') {
@@ -117,10 +149,10 @@ var Room = (function (_super) {
         winston.log('silly', "Received commands from room " + this.name + ": " + commands);
         for (var i = 0; i < commands.length; i++) {
             var _a = commands[i].split(':'), command = _a[0], args = _a.slice(1);
-            this.handleCommand(command, args);
+            this._handleCommand(command, args);
         }
     };
-    Room.prototype.getServer = function (room_name) {
+    Room.prototype._getServer = function (room_name) {
         if (room_name === void 0) { room_name = this.name; }
         var tsweights = [
             ['5', 75], ['6', 75], ['7', 75], ['8', 75], ['16', 75], ['17', 75], ['18', 75],

@@ -1,11 +1,9 @@
 var fs = require('fs');
-
-var should = require('should');
-var winston = require('winston');
 var _ = require('lodash');
 
-winston.cli();
-winston.level = 'verbose';
+require('should');
+require('winston').level = 'verbose';
+
 
 //var Chatango = require('../dist');
 var Chatango = {
@@ -139,6 +137,40 @@ describe('User', function () {
       })
       .catch(done);
   });
+  it('anon names', function () {
+    User.getAnonName('<n3953/>asd', '14396270')
+      .should.equal('anon9123');
+  });
+});
+
+describe('Message', function () {
+  var Message = Chatango.Message;
+  it('parse', function () {
+    Message.parse('te<br/>st')
+      .should.have.properties({
+        'nameColor': '',
+        'fontSize': 11,
+        'textColor': '',
+        'fontFamily': 0,
+        'body': 'te\nst'
+      });
+    Message.parse('<n3c0/><f x09927b62="3">&amp; test #2')
+      .should.have.properties({
+        'nameColor': '3c0',
+        'fontSize': 9,
+        'textColor': '927b62',
+        'fontFamily': 3,
+        'body': '& test #2'
+      });
+    Message.parse('<na0a0a0/>no hope<br/>')
+      .should.have.properties({
+        'nameColor': 'a0a0a0',
+        'fontSize': 11,
+        'textColor': '',
+        'fontFamily': 0,
+        'body': 'no hope\n'
+      });
+  });
 });
 
 describe('Room', function () {
@@ -146,8 +178,8 @@ describe('Room', function () {
   var Room = Chatango.Room;
   var User = Chatango.User;
 
-  it('#join', function (done) {
-    var room = new Room('ttttest', new User);
+  it('join', function (done) {
+    var room = new Room('ttttest');
     room
       .join()
       .then(function () {
@@ -155,7 +187,8 @@ describe('Room', function () {
       })
       .then(function () {
         done()
-      });
+      })
+      .catch(done);
   });
 
 //  it('#authenticate', function (done) {

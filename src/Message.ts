@@ -1,10 +1,77 @@
-class Message {
-  
+/// <reference path="../typings/lodash/lodash.d.ts" />
+
+import _ = require('lodash');
+
+import User = require('./User');
+
+class Message implements Message.Style {
+  id: string;
+  room: string;
+  user: User;
+  body: string;
+
+  stylesOn: boolean;
+  fontFamily: number;
+  fontSize: number;
+  usebackground: number;
+  textColor: string;
+  nameColor: string;
+  bold: boolean;
+  italics: boolean;
+  underline: boolean;
+
+  constructor() {
+    
+  }
+
+  static tokens = {
+    MESSAGE_PARSE: /^(?:<n(?:(?:\d{4})|((?:[a-fA-F0-9]{3}){1,2}))?\/>)?(?:<f x(\d{2})?((?:[a-fA-F0-9]{3}){1,2})?\=\"(\d+)?\">)?(.+)$/
+  }
+
+  static parse(raw: string): Message {
+    var ret = new Message;
+
+    var [
+      input,
+      nameColor,
+      fontSize,
+      textColor,
+      fontFamily,
+      body
+    ] = raw.match(Message.tokens.MESSAGE_PARSE);
+
+    if (nameColor)
+      ret.nameColor = nameColor;
+    if (fontSize)
+      ret.fontSize = parseInt(fontSize, 10);
+    if (textColor)
+      ret.textColor = textColor;
+    if (fontFamily)
+      ret.fontFamily = parseInt(fontFamily, 10);
+
+    body = body.replace(/<br\/>/g, '\n');
+    body = body.replace(/<.+?\/>/, ''); // not sure if necessary
+    body = _.unescape(body);
+    ret.body = body;
+
+    return ret;
+  }
 }
+
+Message.prototype.stylesOn = false;
+Message.prototype.fontFamily = 0;
+Message.prototype.fontSize = 11;
+Message.prototype.usebackground = 0;
+Message.prototype.textColor = '';
+Message.prototype.nameColor = '';
+Message.prototype.bold = false;
+Message.prototype.italics = false;
+Message.prototype.underline = false;
+
 
 module Message {
   export interface Style {
-    [index: string]: any;
+//    [index: string]: any;
     /**
      * whether these styles are shown or not
      */
@@ -12,7 +79,7 @@ module Message {
     /**
      * [0..8], the enumerated font face list
      */
-    fontFamily?: string;
+    fontFamily?: number;
     /**
      * [9..22], font size
      */
