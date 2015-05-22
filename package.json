@@ -26,7 +26,7 @@
     "merge2": "^0.3.5",
     "run-sequence": "^1.1.0",
     "should": "^6.0.1",
-    "typescript": "^1.5.0-beta"
+    "typescript": "git://github.com/Microsoft/TypeScript"
   },
   "dependencies": {
     "bluebird": "^2.9.25",

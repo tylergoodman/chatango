@@ -2,7 +2,7 @@
 /// <reference path="../typings/lodash/lodash.d.ts" />
 /// <reference path="../typings/bluebird/bluebird.d.ts" />
 /// <reference path="../typings/winston/winston.d.ts" />
-var __extends = this.__extends || function (d, b) {
+var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     __.prototype = b.prototype;
@@ -25,26 +25,26 @@ var Room = (function (_super) {
         this.sessionid = '';
         this.id = '';
         this.moderators = [];
-        this.buffer = '';
-        this.firstSend = true;
+        this._buffer = '';
+        this._firstSend = true;
         this.name = name;
         this.user = user;
-        this.connection = new Connection(this._getServer());
-        this.connection.on('data', this._receiveData.bind(this));
-        this.connection.on('connect', function () {
+        this._connection = new Connection(this._getServer());
+        this._connection.on('data', this._receiveData.bind(this));
+        this._connection.on('connect', function () {
             winston.log('info', "Connected to room " + _this.name);
         });
-        this.connection.on('close', function () {
+        this._connection.on('close', function () {
             winston.log('info', "Disconnected from room " + _this.name);
-            _this.buffer = '';
-            _this.firstSend = true;
+            _this._buffer = '';
+            _this._firstSend = true;
             _this.emit('leave');
         });
     }
     Room.prototype.join = function () {
         var _this = this;
         winston.log('verbose', "Connecting to room " + this.name);
-        return this.connection
+        return this._connection
             .connect()
             .then(function () {
             return new Promise(function (resolve, reject) {
@@ -52,7 +52,7 @@ var Room = (function (_super) {
                 _this.send("bauth:" + _this.name + ":" + _this.sessionid + "::");
             });
         })
-            .timeout(500)
+            .timeout(750)
             .then(function () {
             return _this._authenticate();
         });
@@ -61,21 +61,21 @@ var Room = (function (_super) {
         var _this = this;
         return new Promise(function (resolve, reject) {
             winston.log('verbose', "Disconnecting from room " + _this.name);
-            _this.connection.disconnect();
-            _this.connection.once('close', resolve);
+            _this._connection.disconnect();
+            _this._connection.once('close', resolve);
         });
     };
     Room.prototype.send = function (command) {
         if (_.isArray(command)) {
             command = command.join(':');
         }
-        if (!this.firstSend) {
+        if (!this._firstSend) {
             command += '\r\n';
         }
-        this.firstSend = false;
+        this._firstSend = false;
         command += '\0';
         winston.log('verbose', "Sending command to room " + this.name + ": \"" + command + "\"");
-        this.connection.send(command);
+        this._connection.send(command);
         return this;
     };
     Room.prototype.sendMessage = function (content) {
@@ -92,32 +92,39 @@ var Room = (function (_super) {
                 _this.send("blogin:" + _this.user.username + ":" + _this.user.password);
             _this.once('join', resolve);
         })
-            .timeout(500);
+            .timeout(750);
     };
     Room.prototype._handleCommand = function (command, args) {
+        var _this = this;
         winston.log('debug', "Received <" + command + "> command from room " + this.name);
         switch (command) {
             case 'ok':
-                var owner = args[0], sessionid = args[1], session_status = args[2], user_name = args[3], server_time = args[4], my_ip = args[5], moderators = args[6], server_id = args[7];
-                this.owner = owner;
-                this.sessionid = sessionid;
-                this.id = server_id;
-                if (moderators) {
-                    var mods = moderators.split(';');
-                    for (var i = 0, len = mods.length; i < len; i++) {
-                        var _a = mods[i].split(','), name = _a[0], permissions = _a[1];
-                        this.moderators.push(name);
+                (function () {
+                    var owner = args[0], sessionid = args[1], session_status = args[2], user_name = args[3], server_time = args[4], my_ip = args[5], moderators = args[6], server_id = args[7];
+                    _this.owner = owner;
+                    _this.sessionid = sessionid;
+                    _this.id = server_id;
+                    if (moderators) {
+                        var mods = moderators.split(';');
+                        for (var i = 0, len = mods.length; i < len; i++) {
+                            var _a = mods[i].split(','), name = _a[0], permissions = _a[1];
+                            if (_this.moderators.indexOf(name) === -1) {
+                                _this.moderators.push(name);
+                            }
+                        }
                     }
-                }
+                })();
                 break;
             case 'i':
-                var created_at = args[0], user_registered = args[1], user_temporary = args[2], user_id = args[3], user_id_mod_only = args[4], message_id = args[5], user_ip = args[6], no_idea = args[7], no_idea_always_empty = args[8], raw_message = args.slice(9);
-                var message = Message.parse(raw_message.join(':'));
-                var name = user_registered || user_temporary;
-                if (!name) {
-                    name = User.getAnonName(raw_message.join(':'), user_id);
-                }
-                this.emit('history_message', name, message);
+                (function () {
+                    var created_at = args[0], user_registered = args[1], user_temporary = args[2], user_id = args[3], user_id_mod_only = args[4], message_id = args[5], user_ip = args[6], no_idea = args[7], no_idea_always_empty = args[8], raw_message = args.slice(9);
+                    var message = Message.parse(raw_message.join(':'));
+                    var name = user_registered || user_temporary;
+                    if (!name) {
+                        name = User.getAnonName(raw_message.join(':'), user_id);
+                    }
+                    _this.emit('history_message', name, message);
+                })();
                 break;
             case 'nomore':
                 break;
@@ -131,20 +138,32 @@ var Room = (function (_super) {
             case 'n':
                 this.here_now = parseInt(args[0], 16);
                 break;
+            case 'mods':
+                (function () {
+                    var moderators = args[0];
+                    var mods = moderators.split(';');
+                    for (var i = 0, len = mods.length; i < len; i++) {
+                        var _a = mods[i].split(','), name = _a[0], permissions = _a[1];
+                        if (_this.moderators.indexOf(name) === -1) {
+                            _this.moderators.push(name);
+                        }
+                    }
+                })();
+                break;
             default:
                 winston.log('warn', "Received command that has no handler from room " + this.name + ": <" + command + ">");
                 break;
         }
     };
     Room.prototype._receiveData = function (data) {
-        this.buffer += data;
-        var commands = this.buffer.split('\0');
+        this._buffer += data;
+        var commands = this._buffer.split('\0');
         if (commands[commands.length - 1] !== '') {
-            this.buffer = commands.pop();
+            this._buffer = commands.pop();
         }
         else {
             commands.pop();
-            this.buffer = '';
+            this._buffer = '';
         }
         winston.log('silly', "Received commands from room " + this.name + ": " + commands);
         for (var i = 0; i < commands.length; i++) {

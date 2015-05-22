@@ -8,14 +8,14 @@ import User = require('./User');
 declare class Room extends events.EventEmitter {
     name: string;
     user: User;
-    private connection;
+    private _connection;
     owner: string;
     sessionid: string;
     id: string;
     moderators: string[];
     here_now: number;
-    private buffer;
-    private firstSend;
+    private _buffer;
+    private _firstSend;
     constructor(name: string, user?: User);
     join(): Promise<void>;
     leave(): Promise<boolean>;

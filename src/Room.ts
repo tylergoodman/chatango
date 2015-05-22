@@ -16,7 +16,7 @@ import Message = require('./Message');
 class Room extends events.EventEmitter {
   name: string;
   user: User;
-  private connection: Connection;
+  private _connection: Connection;
 
   owner: string = ''; // username of the chatango user who owns this room
   sessionid: string = ''; // session id, made for us if we don't make it (we don't)
@@ -25,8 +25,8 @@ class Room extends events.EventEmitter {
 //  users: User[];
   here_now: number; // number of people in the room
 
-  private buffer: string = '';
-  private firstSend: boolean = true;
+  private _buffer: string = '';
+  private _firstSend: boolean = true;
 
   constructor(name: string, user: User = new User) {
     super();
@@ -34,33 +34,33 @@ class Room extends events.EventEmitter {
     this.name = name;
     this.user = user;
 
-    this.connection = new Connection(this._getServer());
+    this._connection = new Connection(this._getServer());
 
-    this.connection.on('data', this._receiveData.bind(this));
+    this._connection.on('data', this._receiveData.bind(this));
 
-    this.connection.on('connect', () => {
+    this._connection.on('connect', () => {
       winston.log('info', `Connected to room ${this.name}`);
     });
 
-    this.connection.on('close', () => {
+    this._connection.on('close', () => {
       winston.log('info', `Disconnected from room ${this.name}`);
-      this.buffer = '';
-      this.firstSend = true;
+      this._buffer = '';
+      this._firstSend = true;
       this.emit('leave');
     });
   }
 
   join(): Promise<void> {
     winston.log('verbose', `Connecting to room ${this.name}`);
-    return this.connection
+    return this._connection
       .connect()
       .then(() => {
         return new Promise<void>((resolve, reject) => {
           this.once('init', resolve);
           this.send(`bauth:${this.name}:${this.sessionid}::`);
-        })
+        });
       })
-      .timeout(500)
+      .timeout(750)
       .then(() => {
         return this._authenticate();
       });
@@ -69,8 +69,8 @@ class Room extends events.EventEmitter {
   leave(): Promise<boolean> {
     return new Promise<boolean>((resolve, reject) => {
       winston.log('verbose', `Disconnecting from room ${this.name}`);
-      this.connection.disconnect();
-      this.connection.once('close', resolve);
+      this._connection.disconnect();
+      this._connection.once('close', resolve);
     });
   }
 
@@ -80,13 +80,13 @@ class Room extends events.EventEmitter {
     if (_.isArray(command)) {
       command = command.join(':');
     }
-    if (!this.firstSend) {
+    if (!this._firstSend) {
       command += '\r\n';
     }
-    this.firstSend = false;
+    this._firstSend = false;
     command += '\0';
     winston.log('verbose', `Sending command to room ${this.name}: "${command}"`);
-    this.connection.send(command);
+    this._connection.send(command);
     return this;
   }
 
@@ -110,66 +110,84 @@ class Room extends events.EventEmitter {
 
       this.once('join', resolve);
     })
-    .timeout(500);
+    .timeout(750);
   }
 
   private _handleCommand(command: string, args: string[]): void {
     winston.log('debug', `Received <${command}> command from room ${this.name}`);
     switch (command) {
       case 'ok': // on 'bauth'
-        var [
-          owner, // owner of the room
-          sessionid, // session id (generated for us by Chatango because we didn't send any)
-          session_status, // [N = new, C = not new but not registered, M = not new and registered] (will always be N for us)
-          user_name, // our name in the chat (empty string since we authenticate later)
-          server_time, // unix server time
-          my_ip, // our IP
-          moderators, // semicolon-delineated list of moderators and their permissions
-          server_id // id of the server?
-        ] = args;
-        this.owner = owner;
-        this.sessionid= sessionid; // possibly useless
-        this.id = server_id; // also possibly useless
-        if (moderators) {
-          var mods = moderators.split(';');
-          for (var i = 0, len = mods.length; i < len; i++) {
-            var [name, permissions] = mods[i].split(',');
-            this.moderators.push(name);
-            // permissions is some integer that I will literally never figure out
+        (() => {
+          var [
+            owner, // owner of the room
+            sessionid, // session id (generated for us by Chatango because we didn't send any)
+            session_status, // [N = new, C = not new but not registered, M = not new and registered] (will always be N for us)
+            user_name, // our name in the chat (empty string since we authenticate later)
+            server_time, // unix server time
+            my_ip, // our IP
+            moderators, // semicolon-delineated list of moderators and their permissions
+            server_id // id of the server?
+          ] = args;
+          this.owner = owner;
+          this.sessionid= sessionid; // possibly useless
+          this.id = server_id; // also possibly useless
+          if (moderators) {
+            var mods = moderators.split(';');
+            for (var i = 0, len = mods.length; i < len; i++) {
+              var [name, permissions] = mods[i].split(',');
+              if (this.moderators.indexOf(name) === -1) {
+                this.moderators.push(name);
+              }
+              // permissions is some integer that I will literally never figure out
+            }
           }
-        }
+        })();
         break;
       case 'i': // on 'bauth', messages in immediate history (in reverse order)
-        var [
-          created_at, // unix message creation time
-          user_registered, // name of the message sender (if registered)
-          user_temporary, // name of the message sender (if using a temporary name)
-          user_id,
-          user_id_mod_only,
-          message_id,
-          user_ip,
-          no_idea,
-          no_idea_always_empty,
-          ...raw_message
-        ] = args;
-        var message = Message.parse(raw_message.join(':'));
-        var name = user_registered || user_temporary;
-        if (!name) {
-          name = User.getAnonName(raw_message.join(':'), user_id);
-        }
-        this.emit('history_message', name, message);
+        (() => {
+          var [
+            created_at, // unix message creation time
+            user_registered, // name of the message sender (if registered)
+            user_temporary, // name of the message sender (if using a temporary name)
+            user_id,
+            user_id_mod_only,
+            message_id,
+            user_ip,
+            no_idea,
+            no_idea_always_empty,
+            ...raw_message
+          ] = args;
+          var message = Message.parse(raw_message.join(':'));
+          var name = user_registered || user_temporary;
+          if (!name) {
+            name = User.getAnonName(raw_message.join(':'), user_id);
+          }
+          this.emit('history_message', name, message);
+        })();
         break;
       case 'nomore': // emitted if there's history message stream ends before 40 history messages are sent (ie. there are less than 40 immediate history messages)
         break;
       case 'inited': // on 'bauth', after history messages stream ends
         this.emit('init');
         break;
-      case 'pwdok':
-      case 'aliasok':
+      case 'pwdok': // on successful authentication
+      case 'aliasok': // on successful temporary name registration
         this.emit('join');
         break;
-      case 'n':
+      case 'n': // periodically updated
         this.here_now = parseInt(args[0], 16);
+        break;
+      case 'mods':
+        (() => {
+          var [moderators] = args;
+          var mods = moderators.split(';');
+          for (var i = 0, len = mods.length; i < len; i++) {
+            var [name, permissions] = mods[i].split(',');
+            if (this.moderators.indexOf(name) === -1) {
+              this.moderators.push(name);
+            }
+          }
+        })();
         break;
       default:
         winston.log('warn', `Received command that has no handler from room ${this.name}: <${command}>`);
@@ -178,14 +196,14 @@ class Room extends events.EventEmitter {
   }
 
   private _receiveData(data: string): void {
-    this.buffer += data;
-    var commands: string[] = this.buffer.split('\0');
+    this._buffer += data;
+    var commands: string[] = this._buffer.split('\0');
     if (commands[commands.length - 1] !== '') {
-      this.buffer = commands.pop();
+      this._buffer = commands.pop();
     }
     else {
       commands.pop();
-      this.buffer = '';
+      this._buffer = '';
     }
     winston.log('silly', `Received commands from room ${this.name}: ${commands}`);
     for (var i = 0; i < commands.length; i++) {
