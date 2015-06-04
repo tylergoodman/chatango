@@ -195,12 +195,17 @@ var Room = (function (_super) {
                 break;
             case 'show_nlp':
                 winston.log('warn', 'Could not send previous message due to spam detection.');
+                this.emit('flood_ban_warning');
                 break;
             case 'badalias':
                 this.emit('error', new Error('Username is invalid or in use.'));
                 break;
+            case 'nlptb':
+                winston.log('warn', "Flood banned in room " + this.name + " as " + this.user.username);
+                this.emit('flood_ban');
+                break;
             default:
-                winston.log('warn', "Received command that has no handler from room " + this.name + ": <" + command + ">");
+                winston.log('warn', "Received command that has no handler from room " + this.name + ": <" + command + ">: " + args);
                 break;
         }
     };
