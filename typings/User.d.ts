@@ -14,6 +14,7 @@ declare class User {
     type: User.Type;
     style: Message.Style;
     background: Message.Background;
+    hasInited: boolean;
     cookies: request.CookieJar;
     static endpoint: string;
     endpoint_url: string;

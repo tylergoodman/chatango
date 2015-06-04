@@ -1,46 +1,34 @@
 /// <reference path="../typings/lodash/lodash.d.ts" />
 import User = require('./User');
-declare class Message implements Message.Style {
-    id: string;
-    room: string;
-    user: User;
-    body: string;
-    stylesOn: boolean;
-    fontFamily: number;
-    fontSize: number;
-    usebackground: number;
-    textColor: string;
-    nameColor: string;
-    bold: boolean;
-    italics: boolean;
-    underline: boolean;
-    constructor();
-    static tokens: {
-        MESSAGE_PARSE: RegExp;
-    };
-    static parse(raw: string): Message;
-}
 declare module Message {
-    interface Style {
-        stylesOn?: boolean;
-        fontFamily?: number;
-        fontSize?: number;
-        usebackground?: number;
-        textColor?: string;
-        nameColor?: string;
-        bold?: boolean;
-        italics?: boolean;
-        underline?: boolean;
+    class Message {
+        id: string;
+        room: string;
+        user: User;
+        body: string;
+        style: Style;
+        constructor();
     }
-    interface Background {
-        align?: string;
-        ialp?: number;
-        tile?: number;
-        bgalp?: number;
-        bgc?: string;
-        useimg?: number;
-        hasrec?: number;
-        isvid?: number;
+    class Style {
+        stylesOn: boolean;
+        fontFamily: number;
+        fontSize: number;
+        usebackground: number;
+        textColor: string;
+        nameColor: string;
+        bold: boolean;
+        italics: boolean;
+        underline: boolean;
+    }
+    class Background {
+        align: string;
+        ialp: number;
+        tile: number;
+        bgalp: number;
+        bgc: string;
+        useimg: number;
+        hasrec: number;
+        isvid: number;
     }
     interface BackgroundAPIGet {
         bgi: {
@@ -67,5 +55,10 @@ declare module Message {
         Times = 7,
         Typewriter = 8,
     }
+    var tokens: {
+        MESSAGE_PARSE: RegExp;
+        FORMAT: RegExp;
+    };
+    function parse(raw: string): Message;
 }
 export = Message;

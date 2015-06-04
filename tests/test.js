@@ -1,20 +1,15 @@
 var fs = require('fs');
 var _ = require('lodash');
+var should = require('should');
 
-require('should');
 require('winston').level = 'verbose';
 
-
-//var Chatango = require('../dist');
-var Chatango = {
-  Connection: require('../dist/Connection'),
-  User: require('../dist/User'),
-  Message: require('../dist/Message'),
-  Room: require('../dist/Room'),
-}
+var Connection = require('../dist/Connection');
+var User = require('../dist/User');
+var Message = require('../dist/Message');
+var Room = require('../dist/Room');
 
 describe('Connection', function () {
-  var Connection = Chatango.Connection;
 
   it('#connect', function (done) {
     var conn = new Connection('s30.chatango.com');
@@ -33,7 +28,6 @@ describe('Connection', function () {
 });
 
 describe('User', function () {
-  var User = Chatango.User;
 
   it('correct endpoint url', function () {
     var user = new User('ttttestuser');
@@ -69,7 +63,7 @@ describe('User', function () {
       style.fontSize.should.be.Number.within(9, 22);
       style.fontFamily.should.be.String;
       // font should be one of the enumerated fonts
-      Chatango.Message.Font.should.containEql(style.fontFamily);
+      Message.Font.should.containEql(style.fontFamily);
       style.bold.should.be.Boolean;
       style.italics.should.be.Boolean;
       style.underline.should.be.Boolean;
@@ -144,68 +138,130 @@ describe('User', function () {
 });
 
 describe('Message', function () {
-  var Message = Chatango.Message;
+  it('style defaults', function () {
+    (new Message.Style).should.have.properties({
+      stylesOn: false,
+      fontFamily: 0,
+      fontSize: 11,
+      usebackground: 0,
+      textColor: '000000',
+      nameColor: '000000',
+      bold: false,
+      italics: false,
+      underline: false,
+    });
+  });
+  it('background defaults', function () {
+    (new Message.Background).should.have.properties({
+      align: 'tl',
+      ialp: 100,
+      tile: 0,
+      bgalp: 100,
+      bgc: '',
+      useimg: 0,
+      hasrec: 0,
+      isvid: 0,
+    });
+  });
   it('parse', function () {
-    Message.parse('te<br/>st')
-      .should.have.properties({
-        'nameColor': '',
-        'fontSize': 11,
-        'textColor': '',
-        'fontFamily': 0,
-        'body': 'te\nst'
-      });
+    Message.parse('te<br/>st').should.have.property('body', 'te\nst');
     Message.parse('<n3c0/><f x09927b62="3">&amp; test #2')
-      .should.have.properties({
-        'nameColor': '3c0',
-        'fontSize': 9,
-        'textColor': '927b62',
-        'fontFamily': 3,
-        'body': '& test #2'
+      .should.eql({
+        'body': '& test #2',
+        'style': {
+          'nameColor': '3c0',
+          'fontSize': 9,
+          'textColor': '927b62',
+          'fontFamily': 3,
+        }
       });
     Message.parse('<na0a0a0/>no hope<br/>')
-      .should.have.properties({
-        'nameColor': 'a0a0a0',
-        'fontSize': 11,
-        'textColor': '',
-        'fontFamily': 0,
-        'body': 'no hope\n'
+      .should.eql({
+        'body': 'no hope\n',
+        'style': {
+          'nameColor': 'a0a0a0',
+        }
+      });
+    Message.parse('<u><i><b>asdf</b></i></u>')
+      .should.eql({
+        'body': 'asdf',
+        'style': {
+          'bold': true,
+          'italics': true,
+          'underline': true,
+        }
       });
   });
 });
 
 describe('Room', function () {
-//  var {Room, User} = Chatango;
-  var Room = Chatango.Room;
-  var User = Chatango.User;
 
-  it('join', function (done) {
-    var room = new Room('ttttest');
-    room
-      .join()
-      .then(function () {
-        return room.leave();
-      })
-      .then(function () {
-        done()
-      })
-      .catch(done);
+  describe('join', function () {
+    function test (room, done) {
+      room
+        .join()
+        .then(function () {
+          return room.leave();
+        })
+        .then(function () {
+          done();
+        })
+        .catch(done);
+    }
+
+    it('registered', function (done) {
+      test(new Room('ttttest', new User('ttttestuser', 'asdf1234')), done);
+    });
+
+    it('temp', function (done) {
+      test(new Room('ttttest', new User('tempname1234')), done);
+    });
+
+    it('anon', function (done) {
+      test(new Room('ttttest'), done);
+    });
   });
 
-//  it('#authenticate', function (done) {
-//    winston.level = 'silly';
-//    var room = new Room('1635132', new User('ttttestuser', 'asdf1234'))
-//    room
-//      .join()
-//      .then(function () {
-//        
-//      })
-//      .then(function () {
-//        return room.leave();
-//      })
-//      .then(function () {
-//        done();
-//      });
-//  });
+  describe('message', function () {
+    // he he
+    var body = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+    function test (room, done) {
+      room
+        .join()
+        .then(function () {
+          room.sendMessage(body);
+        })
+        .then(function () {
+          return new Promise(function (resolve, reject) {
+            room.on('message', function (name, message) {
+              name.should.equal(room.user.username);
+              message.should.have.property('body', body);
+              resolve();
+            });
+          });
+        })
+        .timeout(750)
+        .then(function () {
+          return room.leave();
+        })
+        .then(function () {
+          done();
+        })
+        .catch(done);
+    }
+
+    it('registered', function (done) {
+      test(new Room('ttttest', new User('ttttestuser', 'asdf1234')), done);
+    });
+
+    it('temp', function (done) {
+      test(new Room('ttttest', new User('tempname1234')), done);
+    });
+
+    it('anon', function (done) {
+      test(new Room('ttttest'), done);
+    });
+  });
 });
 
 function hexColor() {

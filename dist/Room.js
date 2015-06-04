@@ -40,6 +40,10 @@ var Room = (function (_super) {
             _this._firstSend = true;
             _this.emit('leave');
         });
+        this.on('error', function (err) {
+            winston.log('error', err);
+            throw err;
+        });
     }
     Room.prototype.join = function () {
         var _this = this;
@@ -55,6 +59,11 @@ var Room = (function (_super) {
             .timeout(750)
             .then(function () {
             return _this._authenticate();
+        })
+            .then(function () {
+            if (!_this.user.hasInited && _this.user.type !== User.Type.Anonymous) {
+                return _this.user.init();
+            }
         });
     };
     Room.prototype.leave = function () {
@@ -79,6 +88,20 @@ var Room = (function (_super) {
         return this;
     };
     Room.prototype.sendMessage = function (content) {
+        content = _.escape(content);
+        if (this.user.style.bold)
+            content = "<b>" + content + "</b>";
+        if (this.user.style.italics)
+            content = "<i>" + content + "</i>";
+        if (this.user.style.underline)
+            content = "<u>" + content + "</u>";
+        content.replace('\n', '<br/>');
+        var _a = this.user.style, nameColor = _a.nameColor, fontSize = _a.fontSize, textColor = _a.textColor, fontFamily = _a.fontFamily;
+        if (this.user.type === User.Type.Anonymous) {
+            nameColor = String(this.server_time | 0).slice(-4);
+        }
+        var message = "<n" + nameColor + "/><f x" + fontSize + textColor + "=\"" + fontFamily + "\">" + content;
+        this.send(['bm', Math.round(15E5 * Math.random()).toString(36), '0', message]);
         return this;
     };
     Room.prototype._authenticate = function () {
@@ -104,6 +127,7 @@ var Room = (function (_super) {
                     _this.owner = owner;
                     _this.sessionid = sessionid;
                     _this.id = server_id;
+                    _this.server_time = parseFloat(server_id);
                     if (moderators) {
                         var mods = moderators.split(';');
                         for (var i = 0, len = mods.length; i < len; i++) {
@@ -112,6 +136,9 @@ var Room = (function (_super) {
                                 _this.moderators.push(name);
                             }
                         }
+                    }
+                    if (_this.user.type === User.Type.Anonymous) {
+                        _this.user.username = User.getAnonName("<n" + sessionid.slice(4, 8) + "/>", String(_this.server_time | 0));
                     }
                 })();
                 break;
@@ -138,6 +165,22 @@ var Room = (function (_super) {
             case 'n':
                 this.here_now = parseInt(args[0], 16);
                 break;
+            case 'b':
+                (function () {
+                    var created_at = args[0], user_registered = args[1], user_temporary = args[2], user_id = args[3], user_id_mod_only = args[4], message_id = args[5], user_ip = args[6], no_idea = args[7], no_idea_always_empty = args[8], raw_message = args.slice(9);
+                    var message = Message.parse(raw_message.join(':'));
+                    var name = user_registered || user_temporary;
+                    if (!name) {
+                        name = User.getAnonName(raw_message.join(':'), user_id);
+                    }
+                    _this.emit('message', name, message);
+                })();
+                break;
+            case 'u':
+                (function () {
+                    var message_id = args[0];
+                })();
+                break;
             case 'mods':
                 (function () {
                     var moderators = args[0];
@@ -149,6 +192,12 @@ var Room = (function (_super) {
                         }
                     }
                 })();
+                break;
+            case 'show_nlp':
+                winston.log('warn', 'Could not send previous message due to spam detection.');
+                break;
+            case 'badalias':
+                this.emit('error', new Error('Username is invalid or in use.'));
                 break;
             default:
                 winston.log('warn', "Received command that has no handler from room " + this.name + ": <" + command + ">");

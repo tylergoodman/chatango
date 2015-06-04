@@ -24,6 +24,7 @@ class Room extends events.EventEmitter {
   moderators: string[] = []; // string array of moderator names. populated on connect (if we have the permission to see them)
 //  users: User[];
   here_now: number; // number of people in the room
+  server_time: number; // unix time of the server, used in generating anonymous IDs
 
   private _buffer: string = '';
   private _firstSend: boolean = true;
@@ -48,6 +49,11 @@ class Room extends events.EventEmitter {
       this._firstSend = true;
       this.emit('leave');
     });
+
+    this.on('error', (err) => {
+      winston.log('error', err);
+      throw err;
+    });
   }
 
   join(): Promise<void> {
@@ -63,6 +69,11 @@ class Room extends events.EventEmitter {
       .timeout(750)
       .then(() => {
         return this._authenticate();
+      })
+      .then(() => {
+        if (!this.user.hasInited && this.user.type !== User.Type.Anonymous) {
+          return this.user.init();
+        }
       });
   }
 
@@ -91,9 +102,31 @@ class Room extends events.EventEmitter {
   }
 
   sendMessage(content: string): Room {
-//    var message = `<n{nameColor}/><f x{fontSize}{fontColor}="{fontFace}">{contents}`;
-//
-//    this.send(['bm', Math.round(15E5 * Math.random()).toString(36), '0', message]);
+    content = _.escape(content);
+
+    if (this.user.style.bold)
+      content = `<b>${content}</b>`;
+    if (this.user.style.italics)
+      content = `<i>${content}</i>`;
+    if (this.user.style.underline)
+      content = `<u>${content}</u>`;
+
+    content.replace('\n', '<br/>');
+
+    var {
+      nameColor,
+      fontSize,
+      textColor,
+      fontFamily
+    } = this.user.style;
+
+    if (this.user.type === User.Type.Anonymous) {
+      nameColor = String(this.server_time | 0).slice(-4);
+    }
+
+    var message = `<n${nameColor}/><f x${fontSize}${textColor}="${fontFamily}">${content}`;
+
+    this.send(['bm', Math.round(15E5 * Math.random()).toString(36), '0', message]);
     return this;
   }
 
@@ -129,17 +162,21 @@ class Room extends events.EventEmitter {
             server_id // id of the server?
           ] = args;
           this.owner = owner;
-          this.sessionid= sessionid; // possibly useless
+          this.sessionid = sessionid; // possibly useless
           this.id = server_id; // also possibly useless
+          this.server_time = parseFloat(server_id);
           if (moderators) {
             var mods = moderators.split(';');
             for (var i = 0, len = mods.length; i < len; i++) {
+              // permissions is some integer that I will literally never figure out
               var [name, permissions] = mods[i].split(',');
               if (this.moderators.indexOf(name) === -1) {
                 this.moderators.push(name);
               }
-              // permissions is some integer that I will literally never figure out
             }
+          }
+          if (this.user.type === User.Type.Anonymous) {
+            this.user.username = User.getAnonName(`<n${sessionid.slice(4, 8)}/>`, String(this.server_time | 0));
           }
         })();
         break;
@@ -153,7 +190,7 @@ class Room extends events.EventEmitter {
             user_id_mod_only,
             message_id,
             user_ip,
-            no_idea,
+            no_idea, // always 0?
             no_idea_always_empty,
             ...raw_message
           ] = args;
@@ -177,6 +214,36 @@ class Room extends events.EventEmitter {
       case 'n': // periodically updated
         this.here_now = parseInt(args[0], 16);
         break;
+      case 'b': // received when a message is sent from anyone (including self)
+        (() => {
+          var [
+            created_at,
+            user_registered,
+            user_temporary,
+            user_id,
+            user_id_mod_only,
+            message_id,
+            user_ip,
+            no_idea,
+            no_idea_always_empty,
+            ...raw_message
+          ] = args;
+          var message = Message.parse(raw_message.join(':'));
+          var name = user_registered || user_temporary;
+          if (!name) {
+            name = User.getAnonName(raw_message.join(':'), user_id);
+          }
+          this.emit('message', name, message);
+        })();
+        break;
+      case 'u': // received when a message is sent from anyone (including self)
+        // not entirely sure what this is for, maybe multi-part messages sent with 'b' event? but they always fit in one frame
+        (() => {
+          var [
+            message_id,
+          ] = args;
+        })();
+        break;
       case 'mods':
         (() => {
           var [moderators] = args;
@@ -188,6 +255,12 @@ class Room extends events.EventEmitter {
             }
           }
         })();
+        break;
+      case 'show_nlp':
+        winston.log('warn', 'Could not send previous message due to spam detection.');
+        break;
+      case 'badalias':
+        this.emit('error', new Error('Username is invalid or in use.'));
         break;
       default:
         winston.log('warn', `Received command that has no handler from room ${this.name}: <${command}>`);

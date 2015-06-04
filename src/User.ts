@@ -19,17 +19,13 @@ class User {
   password: string = '';
   type: User.Type;
 
-  style: Message.Style = {};
-  background: Message.Background = {};
+  style: Message.Style = new Message.Style;
+  background: Message.Background = new Message.Background;
+  hasInited: boolean = false;
 
   cookies: request.CookieJar = request.jar();
 
   static endpoint: string = 'http://ust.chatango.com/profileimg';
-//  static enum Type {
-//    Anonymous,
-//    Temporary,
-//    Registered,
-//  }
 
   get endpoint_url(): string {
     return `${User.endpoint}/${this.username.charAt(0)}/${this.username.charAt(1)}/${this.username}`;
@@ -51,18 +47,20 @@ class User {
     else {
       this.type = User.Type.Registered;
     }
-
 //    this.init();
   }
 
   init(): Promise<any> {
-    return this.authenticate()
-      .then(() => {
-        return this.getStyle();
-      })
-      .then(() => {
-        return this.getBackground();
-      });
+    if (this.type === User.Type.Registered) {
+      return this.authenticate()
+        .then(() => {
+          return this.getStyle();
+        })
+        .then(() => {
+          return this.getBackground();
+        });
+    }
+    return Promise.resolve();
   }
 
   authenticate(): Promise<void> {
@@ -136,7 +134,7 @@ class User {
     return this.prototype.getStyle.call({ username: username });
   }
 
-  setStyle(style: Message.Style = {}): Promise<Message.Style> {
+  setStyle(style: Message.Style = new Message.Style): Promise<Message.Style> {
     winston.log('silly', `Saving style for user ${this.username}`);
 
     // because typescript didn't infer correctly...
@@ -233,9 +231,11 @@ class User {
     return this.prototype.getBackground.call({ username: username });
   }
 
-  setBackground(background: Message.Background = {}): Promise<Message.Background> {
+  setBackground(background: Message.Background = new Message.Background): Promise<Message.Background> {
     winston.log('silly', `Saving background for user ${this.username}`);
-    background = _.extend(this.background, background);
+
+    // how do I get this to infer correctly
+    background = _.extend<{}, Message.Background, Message.Background, {}, Message.Background>(this.background, background);
 
     return new Promise<Message.Background>((resolve, reject) => {
       request({

@@ -9,14 +9,16 @@ var xml2js = require('xml2js');
 var Promise = require('bluebird');
 var winston = require('winston');
 var _ = require('lodash');
+var Message = require('./Message');
 var User = (function () {
     function User(username, password) {
         if (username === void 0) { username = ''; }
         if (password === void 0) { password = ''; }
         this.username = '';
         this.password = '';
-        this.style = {};
-        this.background = {};
+        this.style = new Message.Style;
+        this.background = new Message.Background;
+        this.hasInited = false;
         this.cookies = request.jar();
         this.username = username;
         this.password = password;
@@ -39,13 +41,16 @@ var User = (function () {
     });
     User.prototype.init = function () {
         var _this = this;
-        return this.authenticate()
-            .then(function () {
-            return _this.getStyle();
-        })
-            .then(function () {
-            return _this.getBackground();
-        });
+        if (this.type === User.Type.Registered) {
+            return this.authenticate()
+                .then(function () {
+                return _this.getStyle();
+            })
+                .then(function () {
+                return _this.getBackground();
+            });
+        }
+        return Promise.resolve();
     };
     User.prototype.authenticate = function () {
         var _this = this;
@@ -98,7 +103,7 @@ var User = (function () {
     };
     User.prototype.setStyle = function (style) {
         var _this = this;
-        if (style === void 0) { style = {}; }
+        if (style === void 0) { style = new Message.Style; }
         winston.log('silly', "Saving style for user " + this.username);
         style = _.extend(this.style, style);
         var data = _.transform(style, function (result, value, key) {
@@ -191,7 +196,7 @@ var User = (function () {
     };
     User.prototype.setBackground = function (background) {
         var _this = this;
-        if (background === void 0) { background = {}; }
+        if (background === void 0) { background = new Message.Background; }
         winston.log('silly', "Saving background for user " + this.username);
         background = _.extend(this.background, background);
         return new Promise(function (resolve, reject) {

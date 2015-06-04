@@ -5289,7 +5289,7 @@ declare module _ {
             s3: S3,
             s4: S4,
             callback?: (objectValue: Value, sourceValue: Value) => Value,
-            thisArg?: any): Result;
+            thisArg?: any): T;
     }
 
     interface LoDashObjectWrapper<T> {

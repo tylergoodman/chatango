@@ -14,6 +14,7 @@ declare class Room extends events.EventEmitter {
     id: string;
     moderators: string[];
     here_now: number;
+    server_time: number;
     private _buffer;
     private _firstSend;
     constructor(name: string, user?: User);
