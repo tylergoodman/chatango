@@ -1,6 +1,7 @@
 var fs = require('fs');
 var _ = require('lodash');
 var should = require('should');
+var faker = require('faker');
 
 require('winston').level = 'verbose';
 
@@ -44,7 +45,7 @@ describe('User', function () {
       background.ialp.should.be.Number.within(0, 100);
       background.tile.should.be.Number.within(0, 1);
       background.bgalp.should.be.Number.within(0, 100);
-      background.bgc.should.be.String.and.match(/^|[0-9a-fA-F]{6}$/);
+      background.bgc.should.be.String.and.match(/^(.{0}|[0-9a-fA-F]{6})$/);
       background.useimg.should.be.Number.within(0, 1);
       background.hasrec.should.be.Number.within(0, 1);
       background.isvid.should.be.Number.within(0, 1);
@@ -59,8 +60,8 @@ describe('User', function () {
       user.style.should.eql(style);
 //      console.log(style);
 
-      style.nameColor.should.be.String.and.match(/^|[0-9a-fA-F]{6}$/);
-      style.textColor.should.be.String.and.match(/^|[0-9a-fA-F]{6}$/);
+      style.nameColor.should.be.String.and.match(/^(.{0}|[0-9a-fA-F]{6})$/);
+      style.textColor.should.be.String.and.match(/^(.{0}|[0-9a-fA-F]{6})$/);
       style.fontSize.should.be.Number.within(9, 22);
       style.fontFamily.should.be.String;
       // font should be one of the enumerated fonts
