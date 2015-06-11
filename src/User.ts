@@ -20,7 +20,7 @@ class User {
 
   private _cookies: request.CookieJar = request.jar();
 
-  static endpoint: string = 'http://ust.chatango.com/profileimg';
+  private static endpoint: string = 'http://ust.chatango.com/profileimg';
 
   get endpoint_url(): string {
     return `${User.endpoint}/${this.username.charAt(0)}/${this.username.charAt(1)}/${this.username}`;
@@ -53,6 +53,9 @@ class User {
         })
         .then(() => {
           return this.getBackground();
+        })
+        .then(() => {
+          this.hasInited = true;
         });
     }
     return Promise.resolve();
@@ -117,6 +120,7 @@ class User {
           return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
         }
         winston.log('verbose', `Retrieved style for user ${this.username}`);
+        // maybe fix this instead of sneaking it by the compiler later
         this.style = JSON.parse(body);
         this.style.fontSize = Number(this.style.fontSize);
         this.style.usebackground = Number(this.style.usebackground);
@@ -126,13 +130,13 @@ class User {
   }
 
   static getStyle(username: string): Promise<Message.Style> {
-    return this.prototype.getStyle.call({ username: username });
+    return new User(username).getStyle();
   }
 
   setStyle(style: Message.Style = new Message.Style): Promise<Message.Style> {
     winston.log('silly', `Saving style for user ${this.username}`);
 
-    // because typescript didn't infer correctly...
+    // because js arguments are more flexible than typescript definitions...
     style = _.extend<{}, Message.Style, Message.Style, {}, Message.Style>(this.style, style);
 
     var data = _.transform<Message.Style, {}>(style, (result, value, key) => {
@@ -180,7 +184,7 @@ class User {
           return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
         }
         winston.log('silly', `Retrieved background for user ${this.username}`);
-        resolve(response.toJSON());
+        resolve(response);
       });
     })
     .then((response) => {
@@ -188,34 +192,16 @@ class User {
       return new Promise<Message.Background>((resolve, reject) => {
         if (response.headers['content-type'] === 'image/jpeg') {
           winston.log('warn', `User ${this.username} has no background data. Using default.`);
-          this.background = {
-            'align': 'tl',
-            'ialp': 100,
-            'tile': 1,
-            'bgalp': 100,
-            'bgc': '',
-            'useimg': 0,
-            'hasrec': 0,
-            'isvid': 0,
-          };
+          this.background = new Message.Background;
           return resolve(this.background);
         }
-        xml2js.parseString(response.body, (err, result) => {
+        xml2js.parseString<Message.BackgroundAPIGet>(response.body, (err, result) => {
           if (err) {
             winston.log('error', `Error while parsing background for user ${this.username}`);
             return reject(err);
           }
           winston.log('verbose', `Retrieved background for user ${this.username}`);
-          this.background = {
-            'align': result.bgi.$.align,
-            'ialp': Number(result.bgi.$.ialp),
-            'tile': Number(result.bgi.$.tile),
-            'bgalp': Number(result.bgi.$.bgalp),
-            'bgc': result.bgi.$.bgc,
-            'useimg': Number(result.bgi.$.useimg),
-            'hasrec': Number(result.bgi.$.hasrec),
-            'isvid': Number(result.bgi.$.isvid),
-          };
+          this.background = new Message.Background(result);
           resolve(this.background);
         });
       });
@@ -223,7 +209,7 @@ class User {
   }
 
   static getBackground(username: string): Promise<Message.Background> {
-    return this.prototype.getBackground.call({ username: username });
+    return new User(username).getBackground();
   }
 
   setBackground(background: Message.Background = new Message.Background): Promise<Message.Background> {
@@ -294,14 +280,14 @@ class User {
     return request(`${this.endpoint_url}/msgbg.jpg`);
   }
   static getBackgroundImage(username: string): request.Request {
-    return this.prototype.getBackgroundImage.call({ username: username });
+    return new User(username).getBackgroundImage();
   }
 
   getAvatar(): request.Request {
     return request(`${this.endpoint_url}/thumb.jpg`);
   }
   static getAvatar(username: string): request.Request {
-    return this.prototype.getAvatar.call({ username: username });
+    return new User(username).getAvatar();
   }
 
   static getAnonName(message: string, _id: string): string {

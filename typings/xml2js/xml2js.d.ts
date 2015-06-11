@@ -8,8 +8,8 @@ declare module 'xml2js' {
     export = xml2js;
 
     module xml2js {
-        function parseString(xml: string, callback: (err: any, result: any) => void): void;
-        function parseString(xml: string, options: Options, callback: (err: any, result: any) => void): void;
+        function parseString<T>(xml: string, callback: (err: any, result: T) => void): void;
+        function parseString<T>(xml: string, options: Options, callback: (err: any, result: T) => void): void;
 
         class Builder {
             constructor(options?: BuilderOptions);

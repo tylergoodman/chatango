@@ -43,6 +43,9 @@ var User = (function () {
             })
                 .then(function () {
                 return _this.getBackground();
+            })
+                .then(function () {
+                _this.hasInited = true;
             });
         }
         return Promise.resolve();
@@ -94,7 +97,7 @@ var User = (function () {
         });
     };
     User.getStyle = function (username) {
-        return this.prototype.getStyle.call({ username: username });
+        return new User(username).getStyle();
     };
     User.prototype.setStyle = function (style) {
         var _this = this;
@@ -145,7 +148,7 @@ var User = (function () {
                     return reject(new Error(response.statusCode + ": " + response.statusMessage));
                 }
                 winston.log('silly', "Retrieved background for user " + _this.username);
-                resolve(response.toJSON());
+                resolve(response);
             });
         })
             .then(function (response) {
@@ -153,16 +156,7 @@ var User = (function () {
             return new Promise(function (resolve, reject) {
                 if (response.headers['content-type'] === 'image/jpeg') {
                     winston.log('warn', "User " + _this.username + " has no background data. Using default.");
-                    _this.background = {
-                        'align': 'tl',
-                        'ialp': 100,
-                        'tile': 1,
-                        'bgalp': 100,
-                        'bgc': '',
-                        'useimg': 0,
-                        'hasrec': 0,
-                        'isvid': 0,
-                    };
+                    _this.background = new Message.Background;
                     return resolve(_this.background);
                 }
                 xml2js.parseString(response.body, function (err, result) {
@@ -171,23 +165,14 @@ var User = (function () {
                         return reject(err);
                     }
                     winston.log('verbose', "Retrieved background for user " + _this.username);
-                    _this.background = {
-                        'align': result.bgi.$.align,
-                        'ialp': Number(result.bgi.$.ialp),
-                        'tile': Number(result.bgi.$.tile),
-                        'bgalp': Number(result.bgi.$.bgalp),
-                        'bgc': result.bgi.$.bgc,
-                        'useimg': Number(result.bgi.$.useimg),
-                        'hasrec': Number(result.bgi.$.hasrec),
-                        'isvid': Number(result.bgi.$.isvid),
-                    };
+                    _this.background = new Message.Background(result);
                     resolve(_this.background);
                 });
             });
         });
     };
     User.getBackground = function (username) {
-        return this.prototype.getBackground.call({ username: username });
+        return new User(username).getBackground();
     };
     User.prototype.setBackground = function (background) {
         var _this = this;
@@ -255,13 +240,13 @@ var User = (function () {
         return request(this.endpoint_url + "/msgbg.jpg");
     };
     User.getBackgroundImage = function (username) {
-        return this.prototype.getBackgroundImage.call({ username: username });
+        return new User(username).getBackgroundImage();
     };
     User.prototype.getAvatar = function () {
         return request(this.endpoint_url + "/thumb.jpg");
     };
     User.getAvatar = function (username) {
-        return this.prototype.getAvatar.call({ username: username });
+        return new User(username).getAvatar();
     };
     User.getAnonName = function (message, _id) {
         var n_tag = message.match(/^<n(\d{4})\/>/)[1].split('');

@@ -11,7 +11,7 @@ declare class User {
     background: Message.Background;
     hasInited: boolean;
     private _cookies;
-    static endpoint: string;
+    private static endpoint;
     endpoint_url: string;
     constructor(username?: string, password?: string);
     init(): Promise<any>;

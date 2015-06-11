@@ -68,6 +68,19 @@ module Message {
 
     hasrec: number;
     isvid: number;
+
+    constructor(args?: BackgroundAPIGet) {
+      if (args !== void 0) {
+        this.align = args.bgi.$.align;
+        this.ialp = parseInt(args.bgi.$.ialp, 10);
+        this.tile = parseInt(args.bgi.$.tile, 10);
+        this.bgalp = parseInt(args.bgi.$.bgalp, 10);
+        this.bgc = args.bgi.$.bgc;
+        this.useimg = parseInt(args.bgi.$.useimg, 10);
+        this.hasrec = parseInt(args.bgi.$.hasrec, 10);
+        this.isvid = parseInt(args.bgi.$.isvid, 10);
+      }
+    }
   }
   Background.prototype.align = 'tl';
   Background.prototype.ialp = 100;

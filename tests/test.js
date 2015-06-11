@@ -265,6 +265,27 @@ describe('Room', function () {
   });
 });
 
+describe('top-level class creator functions', function () {
+  it('joinRoom', function (done) {
+    var room = Chatango.joinRoom('ttttest', 'ttttestuser', 'asdf1234');
+    room.should.be.instanceof(Room);
+    room.should.have.property('name', 'ttttest');
+    room.should.have.property('user');
+    room.user.should.be.instanceof(User);
+    room.user.should.have.properties({
+      username: 'ttttestuser',
+      password: 'asdf1234'
+    });
+    room.on('join', function (room) {
+      room.leave()
+        .then(function () {
+          done();
+        })
+        .catch(done);
+    });
+  });
+});
+
 function hexColor() {
   return _.chain(_.times(6, _.partial(_.random, 65, 70, false))).map(function (n) { return String.fromCharCode(n); }).join('').value();
 }

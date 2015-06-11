@@ -67,9 +67,12 @@ class Room extends events.EventEmitter {
         return this._authenticate();
       })
       .then(() => {
-        if (!this.user.hasInited && this.user.type !== User.Type.Anonymous) {
+        if (!this.user.hasInited) {
           return this.user.init();
         }
+      })
+      .then(() => {
+        this.emit('join', this);
       });
   }
 
@@ -137,7 +140,7 @@ class Room extends events.EventEmitter {
       if (this.user.type === User.Type.Registered)
         this.send(`blogin:${this.user.username}:${this.user.password}`);
 
-      this.once('join', resolve);
+      this.once('auth', resolve);
     });
   }
 
@@ -204,14 +207,14 @@ class Room extends events.EventEmitter {
         break;
       case 'pwdok': // on successful authentication
       case 'aliasok': // on successful temporary name registration
-        this.emit('join');
+        this.emit('auth');
         break;
       case 'n': // periodically updated
         this.here_now = parseInt(args[0], 16);
         break;
       case 'b': // received when a message is sent from anyone (including self)
         (() => {
-          var [
+          var [ // same as above, in 'i' command
             created_at,
             user_registered,
             user_temporary,

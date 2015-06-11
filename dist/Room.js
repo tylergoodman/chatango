@@ -57,9 +57,12 @@ var Room = (function (_super) {
             return _this._authenticate();
         })
             .then(function () {
-            if (!_this.user.hasInited && _this.user.type !== User.Type.Anonymous) {
+            if (!_this.user.hasInited) {
                 return _this.user.init();
             }
+        })
+            .then(function () {
+            _this.emit('join', _this);
         });
     };
     Room.prototype.leave = function () {
@@ -109,7 +112,7 @@ var Room = (function (_super) {
                 _this.send("blogin:" + _this.user.username);
             if (_this.user.type === User.Type.Registered)
                 _this.send("blogin:" + _this.user.username + ":" + _this.user.password);
-            _this.once('join', resolve);
+            _this.once('auth', resolve);
         });
     };
     Room.prototype._handleCommand = function (command, args) {
@@ -155,7 +158,7 @@ var Room = (function (_super) {
                 break;
             case 'pwdok':
             case 'aliasok':
-                this.emit('join');
+                this.emit('auth');
                 break;
             case 'n':
                 this.here_now = parseInt(args[0], 16);

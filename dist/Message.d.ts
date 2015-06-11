@@ -30,6 +30,7 @@ declare module Message {
         useimg: number;
         hasrec: number;
         isvid: number;
+        constructor(args?: BackgroundAPIGet);
     }
     interface BackgroundAPIGet {
         bgi: {
