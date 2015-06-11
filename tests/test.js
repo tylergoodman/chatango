@@ -4,10 +4,11 @@ var should = require('should');
 
 require('winston').level = 'verbose';
 
-var Connection = require('../dist/Connection');
-var User = require('../dist/User');
-var Message = require('../dist/Message');
-var Room = require('../dist/Room');
+var Chatango = require('..');
+var Connection = Chatango.Connection;
+var User = Chatango.User;
+var Message = Chatango.Message;
+var Room = Chatango.Room;
 
 describe('Connection', function () {
 
@@ -75,7 +76,7 @@ describe('User', function () {
   it('authenticate', function (done) {
     var user = new User('ttttestuser', 'asdf1234');
     user.authenticate().then(function () {
-      var cookies = user.cookies.getCookies('http://st.chatango.com');
+      var cookies = user._cookies.getCookies('http://st.chatango.com');
       cookies.should.be.Array.with.length(4);
       cookies[2].should.containDeep({
         key: 'auth.chatango.com'

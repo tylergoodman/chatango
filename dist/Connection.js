@@ -1,6 +1,4 @@
-/// <reference path="../typings/node/node.d.ts" />
-/// <reference path="../typings/winston/winston.d.ts" />
-/// <reference path="../typings/bluebird/bluebird.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -74,7 +72,8 @@ var Connection = (function (_super) {
         winston.log('verbose', "Connecting to " + this.address);
         return new Promise(function (resolve, reject) {
             _this.socket.connect(_this.port, _this.host, resolve);
-        });
+        })
+            .timeout(Connection.TIMEOUT);
     };
     Connection.prototype.disconnect = function (hard) {
         if (hard === void 0) { hard = false; }
@@ -95,8 +94,10 @@ var Connection = (function (_super) {
             }
             winston.log('silly', "Sending data to " + _this.address + ": \"" + data + "\"");
             _this.socket.write(data, resolve);
-        });
+        })
+            .timeout(Connection.TIMEOUT);
     };
+    Connection.TIMEOUT = 3000;
     return Connection;
 })(events.EventEmitter);
 module.exports = Connection;

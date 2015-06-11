@@ -1,5 +1,5 @@
 {
-  "name": "chatango",
+  "name": "chatango.js",
   "version": "0.0.1",
   "description": "library for interacting with Chatango.com",
   "private": true,
@@ -8,7 +8,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "./node_modules/.bin/gulp test"
+    "test": "./node_modules/.bin/gulp test",
+    "build": "./node_modules/.bin/gulp build"
   },
   "repository": {
     "type": "git",

@@ -1,7 +1,4 @@
-/// <reference path="../typings/node/node.d.ts" />
-/// <reference path="../typings/lodash/lodash.d.ts" />
-/// <reference path="../typings/bluebird/bluebird.d.ts" />
-/// <reference path="../typings/winston/winston.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -56,7 +53,6 @@ var Room = (function (_super) {
                 _this.send("bauth:" + _this.name + ":" + _this.sessionid + "::");
             });
         })
-            .timeout(750)
             .then(function () {
             return _this._authenticate();
         })
@@ -114,8 +110,7 @@ var Room = (function (_super) {
             if (_this.user.type === User.Type.Registered)
                 _this.send("blogin:" + _this.user.username + ":" + _this.user.password);
             _this.once('join', resolve);
-        })
-            .timeout(750);
+        });
     };
     Room.prototype._handleCommand = function (command, args) {
         var _this = this;

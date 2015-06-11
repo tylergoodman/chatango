@@ -1,9 +1,4 @@
-/// <reference path="../typings/node/node.d.ts" />
-/// <reference path="../typings/request/request.d.ts" />
-/// <reference path="../typings/xml2js/xml2js.d.ts" />
-/// <reference path="../typings/bluebird/bluebird.d.ts" />
-/// <reference path="../typings/winston/winston.d.ts" />
-/// <reference path="../typings/lodash/lodash.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 var request = require('request');
 var xml2js = require('xml2js');
 var Promise = require('bluebird');
@@ -19,7 +14,7 @@ var User = (function () {
         this.style = new Message.Style;
         this.background = new Message.Background;
         this.hasInited = false;
-        this.cookies = request.jar();
+        this._cookies = request.jar();
         this.username = username;
         this.password = password;
         if (!username && !password) {
@@ -59,7 +54,7 @@ var User = (function () {
             request({
                 url: 'http://scripts.st.chatango.com/setcookies',
                 method: 'POST',
-                jar: _this.cookies,
+                jar: _this._cookies,
                 form: {
                     pwd: _this.password,
                     sid: _this.username
@@ -113,7 +108,7 @@ var User = (function () {
             request({
                 url: 'http://chatango.com/updatemsgstyles',
                 method: 'POST',
-                jar: _this.cookies,
+                jar: _this._cookies,
                 formData: _.extend({
                     'lo': _this.username,
                     'p': _this.password,
@@ -203,7 +198,7 @@ var User = (function () {
             request({
                 url: 'http://chatango.com/updatemsgbg',
                 method: 'POST',
-                jar: _this.cookies,
+                jar: _this._cookies,
                 form: _.extend(background, {
                     'lo': _this.username,
                     'p': _this.password
@@ -233,7 +228,7 @@ var User = (function () {
             request({
                 url: 'http://chatango.com/updatemsgbg',
                 method: 'POST',
-                jar: _this.cookies,
+                jar: _this._cookies,
                 headers: {
                     'User-Agent': 'ChatangoJS'
                 },

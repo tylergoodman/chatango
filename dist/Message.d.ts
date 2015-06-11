@@ -1,4 +1,4 @@
-/// <reference path="../typings/lodash/lodash.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 import User = require('./User');
 declare module Message {
     class Message {
@@ -10,6 +10,7 @@ declare module Message {
         constructor();
     }
     class Style {
+        [index: string]: any;
         stylesOn: boolean;
         fontFamily: number;
         fontSize: number;

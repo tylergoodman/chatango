@@ -1,4 +1,4 @@
-/// <reference path="../typings/lodash/lodash.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 
 import _ = require('lodash');
 
@@ -18,7 +18,7 @@ module Message {
   }
 
   export class Style {
-//    [index: string]: any;
+   [index: string]: any;
     /**
      * @param stylesOn: whether these styles are shown or not
      * @param fontFamily: [0..8], the enumerated font face list

@@ -1,7 +1,4 @@
-/// <reference path="../typings/node/node.d.ts" />
-/// <reference path="../typings/lodash/lodash.d.ts" />
-/// <reference path="../typings/bluebird/bluebird.d.ts" />
-/// <reference path="../typings/winston/winston.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 
 import events = require('events');
 import util = require('util');
@@ -66,7 +63,6 @@ class Room extends events.EventEmitter {
           this.send(`bauth:${this.name}:${this.sessionid}::`);
         });
       })
-      .timeout(750)
       .then(() => {
         return this._authenticate();
       })
@@ -142,8 +138,7 @@ class Room extends events.EventEmitter {
         this.send(`blogin:${this.user.username}:${this.user.password}`);
 
       this.once('join', resolve);
-    })
-    .timeout(750);
+    });
   }
 
   private _handleCommand(command: string, args: string[]): void {

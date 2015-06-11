@@ -1,12 +1,6 @@
 /// <reference path="../typings/tsd.d.ts" />
-/// <reference path="../typings/Connection.d.ts" />
-/// <reference path="../typings/Message.d.ts" />
-/// <reference path="../typings/Room.d.ts" />
-/// <reference path="../typings/User.d.ts" />
 
-module.exports = {
-  Connection: require('./Connection'),
-  Message: require('./Message'),
-  Room: require('./Room'),
-  User: require('./User'),
-};
+export import Connection = require('./Connection');
+export import Message = require('./Message');
+export import Room = require('./Room');
+export import User = require('./User');

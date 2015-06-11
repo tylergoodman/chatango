@@ -1,4 +1,4 @@
-/// <reference path="../typings/lodash/lodash.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 var _ = require('lodash');
 var Message;
 (function (Message_1) {

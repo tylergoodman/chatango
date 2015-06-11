@@ -1,6 +1,4 @@
-/// <reference path="../typings/node/node.d.ts" />
-/// <reference path="../typings/winston/winston.d.ts" />
-/// <reference path="../typings/bluebird/bluebird.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 
 import events = require('events');
 import net = require('net');
@@ -18,6 +16,8 @@ class Connection extends events.EventEmitter {
   get address(): string {
     return `${this.host}:${this.port}`;
   }
+
+  private static TIMEOUT = 3000;
 
   constructor(host: string, port: number = 443) {
     super();
@@ -77,7 +77,8 @@ class Connection extends events.EventEmitter {
     winston.log('verbose', `Connecting to ${this.address}`);
     return new Promise<void>((resolve, reject) => {
       this.socket.connect(this.port, this.host, resolve);
-    });
+    })
+    .timeout(Connection.TIMEOUT);
   }
   disconnect(hard: Boolean = false): Connection {
     winston.log('verbose', `Ending connection to ${this.address}`);
@@ -96,7 +97,8 @@ class Connection extends events.EventEmitter {
       }
       winston.log('silly', `Sending data to ${this.address}: "${data}"`);
       this.socket.write(data, resolve);
-    }); 
+    })
+    .timeout(Connection.TIMEOUT); 
   }
 }
 

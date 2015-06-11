@@ -1,9 +1,4 @@
-/// <reference path="../typings/node/node.d.ts" />
-/// <reference path="../typings/request/request.d.ts" />
-/// <reference path="../typings/xml2js/xml2js.d.ts" />
-/// <reference path="../typings/bluebird/bluebird.d.ts" />
-/// <reference path="../typings/winston/winston.d.ts" />
-/// <reference path="../typings/lodash/lodash.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 
 import fs = require('fs');
 import request = require('request');
@@ -23,7 +18,7 @@ class User {
   background: Message.Background = new Message.Background;
   hasInited: boolean = false;
 
-  cookies: request.CookieJar = request.jar();
+  private _cookies: request.CookieJar = request.jar();
 
   static endpoint: string = 'http://ust.chatango.com/profileimg';
 
@@ -69,7 +64,7 @@ class User {
       request({
         url: 'http://scripts.st.chatango.com/setcookies',
         method: 'POST',
-        jar: this.cookies,
+        jar: this._cookies,
         form: {
           pwd: this.password,
           sid: this.username
@@ -140,7 +135,7 @@ class User {
     // because typescript didn't infer correctly...
     style = _.extend<{}, Message.Style, Message.Style, {}, Message.Style>(this.style, style);
 
-    var data = _.transform(style, (result, value, key) => {
+    var data = _.transform<Message.Style, {}>(style, (result, value, key) => {
       result[key] = String(value);
     });
 
@@ -148,7 +143,7 @@ class User {
       request({
         url: 'http://chatango.com/updatemsgstyles',
         method: 'POST',
-        jar: this.cookies,
+        jar: this._cookies,
         formData: _.extend({
           'lo': this.username,
           'p': this.password,
@@ -241,7 +236,7 @@ class User {
       request({
         url: 'http://chatango.com/updatemsgbg',
         method: 'POST',
-        jar: this.cookies,
+        jar: this._cookies,
         form: _.extend(background, {
           'lo': this.username,
           'p': this.password
@@ -271,7 +266,7 @@ class User {
       request({
         url: 'http://chatango.com/updatemsgbg',
         method: 'POST',
-        jar: this.cookies,
+        jar: this._cookies,
         headers: {
           'User-Agent': 'ChatangoJS'
         },

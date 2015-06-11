@@ -13,16 +13,15 @@ gulp.task('clean', function (done) {
 });
 
 gulp.task('build', ['clean'], function () {
+  var tsProject = ts.createProject('tsconfig.json', {
+    'typescript': require('typescript'),
+  });
+
   var pipe = gulp.src('./src/*.ts')
-    .pipe(ts({
-      'module': 'commonjs',
-      'removeComments': true,
-      'declarationFiles': true,
-      'target': 'ES5',
-      'typescript': require('typescript'),
-    }));
+    .pipe(ts(tsProject));
+
   return merge([
-    pipe.dts.pipe(gulp.dest('./typings')),
+    pipe.dts.pipe(gulp.dest('./dist')),
     pipe.js.pipe(gulp.dest('./dist')),
   ]);
 });
