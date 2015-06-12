@@ -75,14 +75,21 @@ var Connection = (function (_super) {
         })
             .timeout(Connection.TIMEOUT);
     };
-    Connection.prototype.disconnect = function (hard) {
-        if (hard === void 0) { hard = false; }
+    Connection.prototype.disconnect = function () {
+        var _this = this;
         winston.log('verbose', "Ending connection to " + this.address);
-        if (hard)
-            this.socket.destroy();
-        else
-            this.socket.end();
-        return this;
+        return new Promise(function (resolve, reject) {
+            _this.socket.end();
+            _this.once('close', resolve);
+        })
+            .timeout(Connection.TIMEOUT)
+            .catch(Promise.TimeoutError, function () {
+            return new Promise(function (resolve, reject) {
+                winston.log('warn', "Error while disconnecting from " + _this.address + ", forcing");
+                _this.socket.destroy();
+                _this.once('close', resolve);
+            });
+        });
     };
     Connection.prototype.send = function (data) {
         var _this = this;

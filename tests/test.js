@@ -230,7 +230,7 @@ describe('Room', function () {
       room
         .join()
         .then(function () {
-          room.sendMessage(body);
+          room.message(body);
         })
         .then(function () {
           return new Promise(function (resolve, reject) {

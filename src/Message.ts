@@ -15,6 +15,10 @@ module Message {
     constructor() {
       
     }
+
+    toString(): string {
+      return `${this.user.username}: ${this.body}`;
+    }
   }
 
   export class Style {

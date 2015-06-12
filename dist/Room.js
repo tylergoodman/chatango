@@ -28,30 +28,24 @@ var Room = (function (_super) {
         this.user = user;
         this._connection = new Connection(this._getServer());
         this._connection.on('data', this._receiveData.bind(this));
-        this._connection.on('connect', function () {
-            winston.log('info', "Connected to room " + _this.name);
-        });
-        this._connection.on('close', function () {
-            winston.log('info', "Disconnected from room " + _this.name);
-            _this._buffer = '';
-            _this._firstSend = true;
-            _this.emit('leave');
-        });
+        this._connection.on('close', this._reset.bind(this));
         this.on('error', function (err) {
             winston.log('error', err);
+            _this._reset();
             throw err;
         });
     }
     Room.prototype.join = function () {
         var _this = this;
-        winston.log('verbose', "Connecting to room " + this.name);
+        winston.log('verbose', "Joining room " + this.name);
         return this._connection
             .connect()
             .then(function () {
             return new Promise(function (resolve, reject) {
                 _this.once('init', resolve);
-                _this.send("bauth:" + _this.name + ":" + _this.sessionid + "::");
-            });
+                _this._send("bauth:" + _this.name + ":" + _this.sessionid + "::");
+            })
+                .timeout(Room.TIMEOUT);
         })
             .then(function () {
             return _this._authenticate();
@@ -62,18 +56,35 @@ var Room = (function (_super) {
             }
         })
             .then(function () {
+            winston.log('info', "Joined room " + _this.name);
             _this.emit('join', _this);
-        });
+            return _this;
+        })
+            .timeout(Room.TIMEOUT);
     };
     Room.prototype.leave = function () {
         var _this = this;
-        return new Promise(function (resolve, reject) {
-            winston.log('verbose', "Disconnecting from room " + _this.name);
-            _this._connection.disconnect();
-            _this._connection.once('close', resolve);
+        winston.log('verbose', "Leaving room " + this.name);
+        return this._connection.disconnect()
+            .then(function () {
+            winston.log('info', "Left room " + _this.name);
+            _this._reset();
+            _this.emit('leave');
         });
     };
-    Room.prototype.send = function (command) {
+    Room.prototype._reset = function () {
+        this._buffer = '';
+        this._firstSend = true;
+        return this;
+    };
+    Room.prototype.changeUser = function (new_user) {
+        var _this = this;
+        return this.leave().then(function () {
+            _this.user = new_user;
+            return _this.join();
+        });
+    };
+    Room.prototype._send = function (command) {
         if (_.isArray(command)) {
             command = command.join(':');
         }
@@ -86,7 +97,7 @@ var Room = (function (_super) {
         this._connection.send(command);
         return this;
     };
-    Room.prototype.sendMessage = function (content) {
+    Room.prototype.message = function (content) {
         content = _.escape(content);
         if (this.user.style.bold)
             content = "<b>" + content + "</b>";
@@ -100,7 +111,7 @@ var Room = (function (_super) {
             nameColor = String(this.server_time | 0).slice(-4);
         }
         var message = "<n" + nameColor + "/><f x" + fontSize + textColor + "=\"" + fontFamily + "\">" + content;
-        this.send(['bm', Math.round(15E5 * Math.random()).toString(36), '0', message]);
+        this._send(['bm', Math.round(15e5 * Math.random()).toString(36), '0', message]);
         return this;
     };
     Room.prototype._authenticate = function () {
@@ -109,11 +120,12 @@ var Room = (function (_super) {
             if (_this.user.type === User.Type.Anonymous)
                 return resolve();
             if (_this.user.type === User.Type.Temporary)
-                _this.send("blogin:" + _this.user.username);
+                _this._send("blogin:" + _this.user.username);
             if (_this.user.type === User.Type.Registered)
-                _this.send("blogin:" + _this.user.username + ":" + _this.user.password);
+                _this._send("blogin:" + _this.user.username + ":" + _this.user.password);
             _this.once('auth', resolve);
-        });
+        })
+            .timeout(Room.TIMEOUT);
     };
     Room.prototype._handleCommand = function (command, args) {
         var _this = this;
@@ -136,7 +148,7 @@ var Room = (function (_super) {
                         }
                     }
                     if (_this.user.type === User.Type.Anonymous) {
-                        _this.user.username = User.getAnonName("<n" + sessionid.slice(4, 8) + "/>", String(_this.server_time | 0));
+                        _this.user.username = User.getAnonName("<n" + sessionid.slice(4, 8) + "/>", (_this.server_time | 0).toString());
                     }
                 })();
                 break;
@@ -158,6 +170,7 @@ var Room = (function (_super) {
                 break;
             case 'pwdok':
             case 'aliasok':
+                winston.log('info', "Authenticated room " + this.name + " as user " + this.user.username);
                 this.emit('auth');
                 break;
             case 'n':
@@ -259,6 +272,7 @@ var Room = (function (_super) {
         }
         throw new Error("Couldn't find host server for room name " + room_name);
     };
+    Room.TIMEOUT = 3000;
     return Room;
 })(events.EventEmitter);
 module.exports = Room;

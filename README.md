@@ -1,6 +1,6 @@
 # chatango
 
-node.js library for interacting with Chatango.com
+unofficial node.js library for interacting with Chatango.com
 
 <!--
 thanks to 

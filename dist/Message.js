@@ -6,6 +6,9 @@ var Message;
         function Message() {
             this.style = new Style;
         }
+        Message.prototype.toString = function () {
+            return this.user.username + ": " + this.body;
+        };
         return Message;
     })();
     Message_1.Message = Message;

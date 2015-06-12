@@ -73,6 +73,7 @@ class Connection extends events.EventEmitter {
       }
     });
   }
+
   connect(port: number = this.port): Promise<void> {
     winston.log('verbose', `Connecting to ${this.address}`);
     return new Promise<void>((resolve, reject) => {
@@ -80,14 +81,23 @@ class Connection extends events.EventEmitter {
     })
     .timeout(Connection.TIMEOUT);
   }
-  disconnect(hard: Boolean = false): Connection {
+
+  disconnect(): Promise<boolean> {
     winston.log('verbose', `Ending connection to ${this.address}`);
-    if (hard)
-      this.socket.destroy();
-    else
+    return new Promise<boolean>((resolve, reject) => {
       this.socket.end();
-    return this;
+      this.once('close', resolve);
+    })
+    .timeout(Connection.TIMEOUT)
+    .catch(Promise.TimeoutError, () => {
+      return new Promise<boolean>((resolve, reject) => {
+        winston.log('warn', `Error while disconnecting from ${this.address}, forcing`);
+        this.socket.destroy();
+        this.once('close', resolve);
+      });
+    });
   }
+
   send(data: string): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       if (!this.connected) {

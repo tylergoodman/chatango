@@ -26,6 +26,8 @@ class Room extends events.EventEmitter {
   private _buffer: string = '';
   private _firstSend: boolean = true;
 
+  private static TIMEOUT = 3000;
+
   constructor(name: string, user: User = new User) {
     super();
 
@@ -36,32 +38,25 @@ class Room extends events.EventEmitter {
 
     this._connection.on('data', this._receiveData.bind(this));
 
-    this._connection.on('connect', () => {
-      winston.log('info', `Connected to room ${this.name}`);
-    });
-
-    this._connection.on('close', () => {
-      winston.log('info', `Disconnected from room ${this.name}`);
-      this._buffer = '';
-      this._firstSend = true;
-      this.emit('leave');
-    });
+    this._connection.on('close', this._reset.bind(this));
 
     this.on('error', (err) => {
       winston.log('error', err);
+      this._reset();
       throw err;
     });
   }
 
-  join(): Promise<void> {
-    winston.log('verbose', `Connecting to room ${this.name}`);
+  join(): Promise<Room> {
+    winston.log('verbose', `Joining room ${this.name}`);
     return this._connection
       .connect()
       .then(() => {
         return new Promise<void>((resolve, reject) => {
           this.once('init', resolve);
-          this.send(`bauth:${this.name}:${this.sessionid}::`);
-        });
+          this._send(`bauth:${this.name}:${this.sessionid}::`);
+        })
+        .timeout(Room.TIMEOUT);
       })
       .then(() => {
         return this._authenticate();
@@ -72,21 +67,39 @@ class Room extends events.EventEmitter {
         }
       })
       .then(() => {
+        winston.log('info', `Joined room ${this.name}`);
         this.emit('join', this);
+        return this;
+      })
+      .timeout(Room.TIMEOUT);
+  }
+
+  leave(): Promise<void> {
+    winston.log('verbose', `Leaving room ${this.name}`);
+    return this._connection.disconnect()
+      .then(() => {
+        winston.log('info', `Left room ${this.name}`);
+        this._reset();
+        this.emit('leave');
       });
   }
 
-  leave(): Promise<boolean> {
-    return new Promise<boolean>((resolve, reject) => {
-      winston.log('verbose', `Disconnecting from room ${this.name}`);
-      this._connection.disconnect();
-      this._connection.once('close', resolve);
+  private _reset(): Room {
+    this._buffer = '';
+    this._firstSend = true;
+    return this;
+  }
+
+  changeUser(new_user: User): Promise<Room> {
+    return this.leave().then(() => {
+      this.user = new_user;
+      return this.join();
     });
   }
 
-  send(command: string): Room;
-  send(command: string[]): Room;
-  send(command: any): Room {
+  private _send(command: string): Room;
+  private _send(command: string[]): Room;
+  private _send(command: any): Room {
     if (_.isArray(command)) {
       command = command.join(':');
     }
@@ -100,7 +113,7 @@ class Room extends events.EventEmitter {
     return this;
   }
 
-  sendMessage(content: string): Room {
+  message(content: string): Room {
     content = _.escape(content);
 
     if (this.user.style.bold)
@@ -125,7 +138,7 @@ class Room extends events.EventEmitter {
 
     var message = `<n${nameColor}/><f x${fontSize}${textColor}="${fontFamily}">${content}`;
 
-    this.send(['bm', Math.round(15E5 * Math.random()).toString(36), '0', message]);
+    this._send(['bm', Math.round(15e5 * Math.random()).toString(36), '0', message]);
     return this;
   }
 
@@ -135,13 +148,14 @@ class Room extends events.EventEmitter {
         return resolve();
 
       if (this.user.type === User.Type.Temporary)
-        this.send(`blogin:${this.user.username}`);
+        this._send(`blogin:${this.user.username}`);
 
       if (this.user.type === User.Type.Registered)
-        this.send(`blogin:${this.user.username}:${this.user.password}`);
+        this._send(`blogin:${this.user.username}:${this.user.password}`);
 
       this.once('auth', resolve);
-    });
+    })
+    .timeout(Room.TIMEOUT);
   }
 
   private _handleCommand(command: string, args: string[]): void {
@@ -174,7 +188,7 @@ class Room extends events.EventEmitter {
             }
           }
           if (this.user.type === User.Type.Anonymous) {
-            this.user.username = User.getAnonName(`<n${sessionid.slice(4, 8)}/>`, String(this.server_time | 0));
+            this.user.username = User.getAnonName(`<n${sessionid.slice(4, 8)}/>`, (this.server_time | 0).toString());
           }
         })();
         break;
@@ -207,6 +221,7 @@ class Room extends events.EventEmitter {
         break;
       case 'pwdok': // on successful authentication
       case 'aliasok': // on successful temporary name registration
+        winston.log('info', `Authenticated room ${this.name} as user ${this.user.username}`);
         this.emit('auth');
         break;
       case 'n': // periodically updated

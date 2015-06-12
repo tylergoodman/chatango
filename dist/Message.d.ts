@@ -8,6 +8,7 @@ declare module Message {
         body: string;
         style: Style;
         constructor();
+        toString(): string;
     }
     class Style {
         [index: string]: any;

@@ -1,7 +1,7 @@
 {
-  "name": "chatango.js",
+  "name": "chatango",
   "version": "0.0.1",
-  "description": "library for interacting with Chatango.com",
+  "description": "unofficial library for interacting with Chatango.com",
   "private": true,
   "main": "./dist/index.js",
   "directories": {

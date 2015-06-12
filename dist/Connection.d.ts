@@ -12,7 +12,7 @@ declare class Connection extends events.EventEmitter {
     private static TIMEOUT;
     constructor(host: string, port?: number);
     connect(port?: number): Promise<void>;
-    disconnect(hard?: Boolean): Connection;
+    disconnect(): Promise<boolean>;
     send(data: string): Promise<void>;
 }
 export = Connection;
