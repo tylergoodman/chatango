@@ -3,23 +3,78 @@
 import _ = require('lodash');
 
 import User = require('./User');
+import Room = require('./Room');
+
+
+class Message {
+  id: string;
+  room: Room;
+  user: User | string;
+  created_at: number;
+
+  body: string;
+  style: Message.Style = new Message.Style;
+
+  constructor() {
+    
+  }
+
+  toString(): string {
+    return `${this.user.toString()}: ${this.body}`;
+  }
+
+  static tokens = {
+    MESSAGE_PARSE: /^(?:<n(?:(?:\d{4})|((?:[a-fA-F0-9]{3}){1,2}))?\/>)?(?:<f x(\d{2})?((?:[a-fA-F0-9]{3}){1,2})?\=\"(\d+)?\">)?(.+)$/,
+    FORMAT: /(?:<([biu])>)(.+?)<\/\1>/
+  }
+
+  static parse(raw: string): Message {
+    var ret = new Message;
+
+    var [
+      input,
+      nameColor,
+      fontSize,
+      textColor,
+      fontFamily,
+      body
+    ] = raw.match(Message.tokens.MESSAGE_PARSE);
+
+    if (nameColor)
+      ret.style.nameColor = nameColor;
+    if (fontSize)
+      ret.style.fontSize = parseInt(fontSize, 10);
+    if (textColor)
+      ret.style.textColor = textColor;
+    if (fontFamily)
+      ret.style.fontFamily = parseInt(fontFamily, 10);
+
+    body = body.replace(/<br\/>/g, '\n');
+
+    var format: RegExpMatchArray;
+    while (format = body.match(Message.tokens.FORMAT)) {
+      switch (format[1]) {
+        case 'b':
+          ret.style.bold = true;
+          break;
+        case 'i':
+          ret.style.italics = true;
+          break;
+        case 'u':
+          ret.style.underline = true;
+          break;
+      }
+      body = format[2];
+    }
+
+    body = _.unescape(body);
+    ret.body = body;
+
+    return ret;
+  }
+}
 
 module Message {
-  export class Message {
-    id: string;
-    room: string;
-    user: User;
-    body: string;
-    style: Style = new Style;
-
-    constructor() {
-      
-    }
-
-    toString(): string {
-      return `${this.user.username}: ${this.body}`;
-    }
-  }
 
   export class Style {
    [index: string]: any;
@@ -120,57 +175,6 @@ module Message {
     Papyrus,
     Times,
     Typewriter,
-  }
-
-
-  export var tokens = {
-    MESSAGE_PARSE: /^(?:<n(?:(?:\d{4})|((?:[a-fA-F0-9]{3}){1,2}))?\/>)?(?:<f x(\d{2})?((?:[a-fA-F0-9]{3}){1,2})?\=\"(\d+)?\">)?(.+)$/,
-    FORMAT: /(?:<([biu])>)(.+?)<\/\1>/
-  }
-
-  export function parse(raw: string): Message {
-    var ret = new Message;
-
-    var [
-      input,
-      nameColor,
-      fontSize,
-      textColor,
-      fontFamily,
-      body
-    ] = raw.match(tokens.MESSAGE_PARSE);
-
-    if (nameColor)
-      ret.style.nameColor = nameColor;
-    if (fontSize)
-      ret.style.fontSize = parseInt(fontSize, 10);
-    if (textColor)
-      ret.style.textColor = textColor;
-    if (fontFamily)
-      ret.style.fontFamily = parseInt(fontFamily, 10);
-
-    body = body.replace(/<br\/>/g, '\n');
-
-    var format: RegExpMatchArray;
-    while (format = body.match(tokens.FORMAT)) {
-      switch (format[1]) {
-        case 'b':
-          ret.style.bold = true;
-          break;
-        case 'i':
-          ret.style.italics = true;
-          break;
-        case 'u':
-          ret.style.underline = true;
-          break;
-      }
-      body = format[2];
-    }
-
-    body = _.unescape(body);
-    ret.body = body;
-
-    return ret;
   }
 }
 

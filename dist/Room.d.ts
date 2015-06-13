@@ -2,14 +2,18 @@
 import events = require('events');
 import Promise = require('bluebird');
 import User = require('./User');
+import util = require('./util');
 declare class Room extends events.EventEmitter {
     name: string;
     user: User;
     private _connection;
     owner: string;
-    sessionid: string;
+    session_id: string;
     id: string;
-    moderators: string[];
+    moderators: util.Set<string>;
+    users: {
+        [index: string]: User;
+    };
     here_now: number;
     server_time: number;
     private _buffer;
@@ -26,6 +30,7 @@ declare class Room extends events.EventEmitter {
     private _authenticate();
     private _handleCommand(command, args);
     private _receiveData(data);
+    private _parseMessage(args);
     private _getServer(room_name?);
 }
 export = Room;

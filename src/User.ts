@@ -8,11 +8,15 @@ import winston = require('winston');
 import _ = require('lodash');
 
 import Message = require('./Message');
+import util = require('./util');
 
 class User {
-  username: string = '';
-  password: string = '';
+  username: string;
+  password: string;
   type: User.Type;
+
+  joined_at: number;
+  session_ids: util.Set<string> = new util.Set<string>();
 
   style: Message.Style = new Message.Style;
   background: Message.Background = new Message.Background;
@@ -26,23 +30,30 @@ class User {
     return `${User.endpoint}/${this.username.charAt(0)}/${this.username.charAt(1)}/${this.username}`;
   }
 
-  constructor(username: string = '', password: string = '') {
+  constructor(username: string = '', password: string = '', type?: User.Type) {
     this.username = username;
     this.password = password;
 
+    if (type === void 0) {
+      if (!username && !password) {
+        type = User.Type.Anonymous;
+      }
+      else if (!password) {
+        type = User.Type.Temporary;
+      }
+      else {
+        type = User.Type.Registered;
+      }
+    }
+    this.type = type;
 //    this.cookies.setCookie(request.cookie('cookies_enabled.chatango.com=yes'), 'http://.chatango.com');
 //    this.cookies.setCookie(request.cookie('fph.chatango.com=http'), 'http://.chatango.com');
 
-    if (!username && !password) {
-      this.type = User.Type.Anonymous;
-    }
-    else if (!password) {
-      this.type = User.Type.Temporary;
-    }
-    else {
-      this.type = User.Type.Registered;
-    }
 //    this.init();
+  }
+
+  toString(): string {
+    return `${this.username}#${this.session_ids}`;
   }
 
   init(): Promise<any> {

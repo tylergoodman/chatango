@@ -12,6 +12,7 @@ var winston = require('winston');
 var User = require('./User');
 var Connection = require('./Connection');
 var Message = require('./Message');
+var util = require('./util');
 var Room = (function (_super) {
     __extends(Room, _super);
     function Room(name, user) {
@@ -19,9 +20,10 @@ var Room = (function (_super) {
         if (user === void 0) { user = new User; }
         _super.call(this);
         this.owner = '';
-        this.sessionid = '';
+        this.session_id = '';
         this.id = '';
-        this.moderators = [];
+        this.moderators = new util.Set();
+        this.users = {};
         this._buffer = '';
         this._firstSend = true;
         this.name = name;
@@ -43,12 +45,19 @@ var Room = (function (_super) {
             .then(function () {
             return new Promise(function (resolve, reject) {
                 _this.once('init', resolve);
-                _this._send("bauth:" + _this.name + ":" + _this.sessionid + "::");
+                _this._send("bauth:" + _this.name + ":" + _this.session_id + "::");
             })
                 .timeout(Room.TIMEOUT);
         })
             .then(function () {
             return _this._authenticate();
+        })
+            .then(function () {
+            return new Promise(function (resolve, reject) {
+                _this.once('userlist', resolve);
+                _this._send('gparticipants');
+            })
+                .timeout(Room.TIMEOUT);
         })
             .then(function () {
             if (!_this.user.hasInited) {
@@ -75,6 +84,7 @@ var Room = (function (_super) {
     Room.prototype._reset = function () {
         this._buffer = '';
         this._firstSend = true;
+        this.users = {};
         return this;
     };
     Room.prototype.changeUser = function (new_user) {
@@ -88,12 +98,12 @@ var Room = (function (_super) {
         if (_.isArray(command)) {
             command = command.join(':');
         }
+        winston.log('verbose', "Sending command to room " + this.name + ": \"" + command + "\"");
         if (!this._firstSend) {
             command += '\r\n';
         }
         this._firstSend = false;
         command += '\0';
-        winston.log('verbose', "Sending command to room " + this.name + ": \"" + command + "\"");
         this._connection.send(command);
         return this;
     };
@@ -125,7 +135,10 @@ var Room = (function (_super) {
                 _this._send("blogin:" + _this.user.username + ":" + _this.user.password);
             _this.once('auth', resolve);
         })
-            .timeout(Room.TIMEOUT);
+            .timeout(Room.TIMEOUT)
+            .then(function () {
+            _this.users[_this.user.username] = _this.user;
+        });
     };
     Room.prototype._handleCommand = function (command, args) {
         var _this = this;
@@ -135,16 +148,14 @@ var Room = (function (_super) {
                 (function () {
                     var owner = args[0], sessionid = args[1], session_status = args[2], user_name = args[3], server_time = args[4], my_ip = args[5], moderators = args[6], server_id = args[7];
                     _this.owner = owner;
-                    _this.sessionid = sessionid;
+                    _this.session_id = sessionid;
                     _this.id = server_id;
                     _this.server_time = parseFloat(server_id);
                     if (moderators) {
                         var mods = moderators.split(';');
                         for (var i = 0, len = mods.length; i < len; i++) {
                             var _a = mods[i].split(','), name = _a[0], permissions = _a[1];
-                            if (_this.moderators.indexOf(name) === -1) {
-                                _this.moderators.push(name);
-                            }
+                            _this.moderators.add(name);
                         }
                     }
                     if (_this.user.type === User.Type.Anonymous) {
@@ -153,15 +164,7 @@ var Room = (function (_super) {
                 })();
                 break;
             case 'i':
-                (function () {
-                    var created_at = args[0], user_registered = args[1], user_temporary = args[2], user_id = args[3], user_id_mod_only = args[4], message_id = args[5], user_ip = args[6], no_idea = args[7], no_idea_always_empty = args[8], raw_message = args.slice(9);
-                    var message = Message.parse(raw_message.join(':'));
-                    var name = user_registered || user_temporary;
-                    if (!name) {
-                        name = User.getAnonName(raw_message.join(':'), user_id);
-                    }
-                    _this.emit('history_message', name, message);
-                })();
+                this.emit('history_message', this._parseMessage(args));
                 break;
             case 'nomore':
                 break;
@@ -177,20 +180,9 @@ var Room = (function (_super) {
                 this.here_now = parseInt(args[0], 16);
                 break;
             case 'b':
-                (function () {
-                    var created_at = args[0], user_registered = args[1], user_temporary = args[2], user_id = args[3], user_id_mod_only = args[4], message_id = args[5], user_ip = args[6], no_idea = args[7], no_idea_always_empty = args[8], raw_message = args.slice(9);
-                    var message = Message.parse(raw_message.join(':'));
-                    var name = user_registered || user_temporary;
-                    if (!name) {
-                        name = User.getAnonName(raw_message.join(':'), user_id);
-                    }
-                    _this.emit('message', name, message);
-                })();
+                this.emit('message', this._parseMessage(args));
                 break;
             case 'u':
-                (function () {
-                    var message_id = args[0];
-                })();
                 break;
             case 'mods':
                 (function () {
@@ -198,10 +190,35 @@ var Room = (function (_super) {
                     var mods = moderators.split(';');
                     for (var i = 0, len = mods.length; i < len; i++) {
                         var _a = mods[i].split(','), name = _a[0], permissions = _a[1];
-                        if (_this.moderators.indexOf(name) === -1) {
-                            _this.moderators.push(name);
-                        }
+                        _this.moderators.add(name);
                     }
+                })();
+                break;
+            case 'gparticipants':
+                (function () {
+                    var num_anon_or_temp_users = args[0], users = args.slice(1);
+                    users = users.join(':').split(';');
+                    for (var i = 0, len = users.length; i < len; i++) {
+                        var _a = users[i].split(':'), dont_know = _a[0], joined_at = _a[1], session_id = _a[2], user_registered = _a[3], user_temporary = _a[4];
+                        var name;
+                        if (user_registered === 'None') {
+                            name = user_temporary;
+                        }
+                        else {
+                            name = user_registered;
+                        }
+                        var user;
+                        if (name === _this.user.username) {
+                            user = _this.user;
+                        }
+                        else {
+                            user = new User(name, '', User.Type.Registered);
+                            _this.users[user.username] = user;
+                        }
+                        user.session_ids.add(session_id);
+                        user.joined_at = parseInt(joined_at, 10);
+                    }
+                    _this.emit('userlist', _this.users);
                 })();
                 break;
             case 'show_nlp':
@@ -235,6 +252,20 @@ var Room = (function (_super) {
             var _a = commands[i].split(':'), command = _a[0], args = _a.slice(1);
             this._handleCommand(command, args);
         }
+    };
+    Room.prototype._parseMessage = function (args) {
+        var created_at = args[0], user_registered = args[1], user_temporary = args[2], user_session_id = args[3], user_id = args[4], message_id = args[5], user_ip = args[6], no_idea = args[7], no_idea_always_empty = args[8], raw_message = args.slice(9);
+        var raw = raw_message.join(':');
+        var name = user_registered || user_temporary;
+        if (!name) {
+            name = User.getAnonName(raw, user_session_id);
+        }
+        var message = Message.parse(raw);
+        message.id = message_id;
+        message.room = this;
+        message.user = this.users[name] || name;
+        message.created_at = parseInt(created_at, 10);
+        return message;
     };
     Room.prototype._getServer = function (room_name) {
         if (room_name === void 0) { room_name = this.name; }

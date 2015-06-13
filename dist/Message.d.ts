@@ -1,15 +1,22 @@
 /// <reference path="../typings/tsd.d.ts" />
 import User = require('./User');
+import Room = require('./Room');
+declare class Message {
+    id: string;
+    room: Room;
+    user: User | string;
+    created_at: number;
+    body: string;
+    style: Message.Style;
+    constructor();
+    toString(): string;
+    static tokens: {
+        MESSAGE_PARSE: RegExp;
+        FORMAT: RegExp;
+    };
+    static parse(raw: string): Message;
+}
 declare module Message {
-    class Message {
-        id: string;
-        room: string;
-        user: User;
-        body: string;
-        style: Style;
-        constructor();
-        toString(): string;
-    }
     class Style {
         [index: string]: any;
         stylesOn: boolean;
@@ -58,10 +65,5 @@ declare module Message {
         Times = 7,
         Typewriter = 8,
     }
-    var tokens: {
-        MESSAGE_PARSE: RegExp;
-        FORMAT: RegExp;
-    };
-    function parse(raw: string): Message;
 }
 export = Message;

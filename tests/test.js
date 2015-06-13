@@ -234,9 +234,12 @@ describe('Room', function () {
         })
         .then(function () {
           return new Promise(function (resolve, reject) {
-            room.on('message', function (name, message) {
-              name.should.equal(room.user.username);
-              message.should.have.property('body', body);
+            room.on('message', function (message) {
+              message.should.have.properties({
+                'room': room,
+                'user': room.user,
+                'body': body,
+              });
               resolve();
             });
           });

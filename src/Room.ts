@@ -1,7 +1,6 @@
 /// <reference path="../typings/tsd.d.ts" />
 
 import events = require('events');
-import util = require('util');
 import _ = require('lodash');
 import Promise = require('bluebird');
 import winston = require('winston');
@@ -9,6 +8,7 @@ import winston = require('winston');
 import User = require('./User');
 import Connection = require('./Connection');
 import Message = require('./Message');
+import util = require('./util');
 
 class Room extends events.EventEmitter {
   name: string;
@@ -16,11 +16,11 @@ class Room extends events.EventEmitter {
   private _connection: Connection;
 
   owner: string = ''; // username of the chatango user who owns this room
-  sessionid: string = ''; // session id, made for us if we don't make it (we don't)
+  session_id: string = ''; // session id, made for us if we don't make it (we don't)
   id: string = ''; // our unique identifier? useless so far
-  moderators: string[] = []; // string array of moderator names. populated on connect (if we have the permission to see them)
-//  users: User[];
-  here_now: number; // number of people in the room
+  moderators: util.Set<string> = new util.Set<string>(); // string array of moderator names. populated on connect (if we have the permission to see them)
+  users: {[index: string]: User} = {};
+  here_now: number; // number of people in the room (including anonymous/unnamed)
   server_time: number; // unix time of the server, used in generating anonymous IDs
 
   private _buffer: string = '';
@@ -54,12 +54,19 @@ class Room extends events.EventEmitter {
       .then(() => {
         return new Promise<void>((resolve, reject) => {
           this.once('init', resolve);
-          this._send(`bauth:${this.name}:${this.sessionid}::`);
+          this._send(`bauth:${this.name}:${this.session_id}::`);
         })
         .timeout(Room.TIMEOUT);
       })
       .then(() => {
         return this._authenticate();
+      })
+      .then(() => {
+        return new Promise<void>((resolve, reject) => {
+          this.once('userlist', resolve);
+          this._send('gparticipants');
+        })
+        .timeout(Room.TIMEOUT);
       })
       .then(() => {
         if (!this.user.hasInited) {
@@ -87,6 +94,7 @@ class Room extends events.EventEmitter {
   private _reset(): Room {
     this._buffer = '';
     this._firstSend = true;
+    this.users = {};
     return this;
   }
 
@@ -103,12 +111,12 @@ class Room extends events.EventEmitter {
     if (_.isArray(command)) {
       command = command.join(':');
     }
+    winston.log('verbose', `Sending command to room ${this.name}: "${command}"`);
     if (!this._firstSend) {
       command += '\r\n';
     }
     this._firstSend = false;
     command += '\0';
-    winston.log('verbose', `Sending command to room ${this.name}: "${command}"`);
     this._connection.send(command);
     return this;
   }
@@ -155,17 +163,20 @@ class Room extends events.EventEmitter {
 
       this.once('auth', resolve);
     })
-    .timeout(Room.TIMEOUT);
+    .timeout(Room.TIMEOUT)
+    .then(() => {
+      this.users[this.user.username] = this.user;
+    });
   }
 
   private _handleCommand(command: string, args: string[]): void {
     winston.log('debug', `Received <${command}> command from room ${this.name}`);
     switch (command) {
-      case 'ok': // on 'bauth'
+      case 'ok': // received in response to sending 'bauth' command
         (() => {
           var [
             owner, // owner of the room
-            sessionid, // session id (generated for us by Chatango because we didn't send any)
+            session_id, // session id (generated for us by Chatango because we didn't send any)
             session_status, // [N = new, C = not new but not registered, M = not new and registered] (will always be N for us)
             user_name, // our name in the chat (empty string since we authenticate later)
             server_time, // unix server time
@@ -174,7 +185,7 @@ class Room extends events.EventEmitter {
             server_id // id of the server?
           ] = args;
           this.owner = owner;
-          this.sessionid = sessionid; // possibly useless
+          this.session_id = session_id; // possibly useless
           this.id = server_id; // also possibly useless
           this.server_time = parseFloat(server_id);
           if (moderators) {
@@ -182,37 +193,17 @@ class Room extends events.EventEmitter {
             for (var i = 0, len = mods.length; i < len; i++) {
               // permissions is some integer that I will literally never figure out
               var [name, permissions] = mods[i].split(',');
-              if (this.moderators.indexOf(name) === -1) {
-                this.moderators.push(name);
-              }
+              this.moderators.add(name);
             }
           }
           if (this.user.type === User.Type.Anonymous) {
-            this.user.username = User.getAnonName(`<n${sessionid.slice(4, 8)}/>`, (this.server_time | 0).toString());
+            // TODO - un-hack this
+            this.user.username = User.getAnonName(`<n${session_id.slice(4, 8)}/>`, (this.server_time | 0).toString());
           }
         })();
         break;
       case 'i': // on 'bauth', messages in immediate history (in reverse order)
-        (() => {
-          var [
-            created_at, // unix message creation time
-            user_registered, // name of the message sender (if registered)
-            user_temporary, // name of the message sender (if using a temporary name)
-            user_id,
-            user_id_mod_only,
-            message_id,
-            user_ip,
-            no_idea, // always 0?
-            no_idea_always_empty,
-            ...raw_message
-          ] = args;
-          var message = Message.parse(raw_message.join(':'));
-          var name = user_registered || user_temporary;
-          if (!name) {
-            name = User.getAnonName(raw_message.join(':'), user_id);
-          }
-          this.emit('history_message', name, message);
-        })();
+        this.emit('history_message', this._parseMessage(args));
         break;
       case 'nomore': // emitted if there's history message stream ends before 40 history messages are sent (ie. there are less than 40 immediate history messages)
         break;
@@ -227,35 +218,14 @@ class Room extends events.EventEmitter {
       case 'n': // periodically updated
         this.here_now = parseInt(args[0], 16);
         break;
-      case 'b': // received when a message is sent from anyone (including self)
-        (() => {
-          var [ // same as above, in 'i' command
-            created_at,
-            user_registered,
-            user_temporary,
-            user_id,
-            user_id_mod_only,
-            message_id,
-            user_ip,
-            no_idea,
-            no_idea_always_empty,
-            ...raw_message
-          ] = args;
-          var message = Message.parse(raw_message.join(':'));
-          var name = user_registered || user_temporary;
-          if (!name) {
-            name = User.getAnonName(raw_message.join(':'), user_id);
-          }
-          this.emit('message', name, message);
-        })();
+      case 'b':
+        // received when a message is sent from anyone (including self)
+        // same as above, in 'i' command
+        this.emit('message', this._parseMessage(args));
         break;
-      case 'u': // received when a message is sent from anyone (including self)
+      case 'u':
+        // received when a message is sent from anyone (including self)
         // not entirely sure what this is for, maybe multi-part messages sent with 'b' event? but they always fit in one frame
-        (() => {
-          var [
-            message_id,
-          ] = args;
-        })();
         break;
       case 'mods':
         (() => {
@@ -263,24 +233,61 @@ class Room extends events.EventEmitter {
           var mods = moderators.split(';');
           for (var i = 0, len = mods.length; i < len; i++) {
             var [name, permissions] = mods[i].split(',');
-            if (this.moderators.indexOf(name) === -1) {
-              this.moderators.push(name);
-            }
+            this.moderators.add(name);
           }
         })();
         break;
-      case 'show_nlp':
+      case 'gparticipants':
+        // received when we toggle on receiving updates on the current users in the room
+        // includes a list of users excluding anonymous
+        (() => {
+          var [
+            num_anon_or_temp_users,
+            ...users
+          ] = args;
+          users = users.join(':').split(';');
+          for (var i = 0, len = users.length; i < len; i++) {
+            var [
+              dont_know,
+              joined_at,
+              session_id,
+              user_registered,
+              user_temporary
+            ] = users[i].split(':');
+            var name;
+            if (user_registered === 'None') {
+              name = user_temporary;
+            }
+            else {
+              name = user_registered;
+            }
+            var user;
+            // if we hit outselves, don't re-make ourselves
+            if (name === this.user.username) {
+              user = this.user;
+            }
+            else {
+              user = new User(name, '', User.Type.Registered);
+              this.users[user.username] = user;
+            }
+            user.session_ids.add(session_id);
+            user.joined_at = parseInt(joined_at, 10);
+          }
+          this.emit('userlist', this.users);
+        })();
+        break;
+      case 'show_nlp': // received when we send a message that was rejected due to spam detection
         winston.log('warn', 'Could not send previous message due to spam detection.');
         this.emit('flood_ban_warning');
         break;
-      case 'badalias':
+      case 'badalias': // received when we try to register a temporary name that is already in use
         this.emit('error', new Error('Username is invalid or in use.'));
         break;
-      case 'nlptb':
+      case 'nlptb': // received when we get flood banned
         winston.log('warn', `Flood banned in room ${this.name} as ${this.user.username}`);
         this.emit('flood_ban');
         break;
-      default:
+      default: // catch and warn when we receive a command that we haven't accounted for
         winston.log('warn', `Received command that has no handler from room ${this.name}: <${command}>: ${args}`);
         break;
     }
@@ -301,6 +308,33 @@ class Room extends events.EventEmitter {
       var [command, ...args] = commands[i].split(':');
       this._handleCommand(command, args);
     }
+  }
+
+  private _parseMessage(args: string[]): Message {
+    // TODO - look at these variables again with what you've learned from other commands
+    var [
+      created_at, // unix message creation time
+      user_registered, // name of the message sender (if registered)
+      user_temporary, // name of the message sender (if using a temporary name)
+      user_session_id,
+      user_id, // mod only, seems to be a function of the user_session_id
+      message_id,
+      user_ip, // mod only
+      no_idea, // always 0?
+      no_idea_always_empty,
+      ...raw_message
+    ] = args;
+    var raw = raw_message.join(':');
+    var name = user_registered || user_temporary;
+    if (!name) {
+      name = User.getAnonName(raw, user_session_id);
+    }
+    var message = Message.parse(raw);
+    message.id = message_id;
+    message.room = this;
+    message.user = this.users[name] || name;
+    message.created_at = parseInt(created_at, 10);
+    return message;
   }
 
   private _getServer(room_name: string = this.name): string {

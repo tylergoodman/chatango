@@ -5,27 +5,30 @@ var Promise = require('bluebird');
 var winston = require('winston');
 var _ = require('lodash');
 var Message = require('./Message');
+var util = require('./util');
 var User = (function () {
-    function User(username, password) {
+    function User(username, password, type) {
         if (username === void 0) { username = ''; }
         if (password === void 0) { password = ''; }
-        this.username = '';
-        this.password = '';
+        this.session_ids = new util.Set();
         this.style = new Message.Style;
         this.background = new Message.Background;
         this.hasInited = false;
         this._cookies = request.jar();
         this.username = username;
         this.password = password;
-        if (!username && !password) {
-            this.type = User.Type.Anonymous;
+        if (type === void 0) {
+            if (!username && !password) {
+                type = User.Type.Anonymous;
+            }
+            else if (!password) {
+                type = User.Type.Temporary;
+            }
+            else {
+                type = User.Type.Registered;
+            }
         }
-        else if (!password) {
-            this.type = User.Type.Temporary;
-        }
-        else {
-            this.type = User.Type.Registered;
-        }
+        this.type = type;
     }
     Object.defineProperty(User.prototype, "endpoint_url", {
         get: function () {
@@ -34,6 +37,9 @@ var User = (function () {
         enumerable: true,
         configurable: true
     });
+    User.prototype.toString = function () {
+        return this.username + "#" + this.session_ids;
+    };
     User.prototype.init = function () {
         var _this = this;
         if (this.type === User.Type.Registered) {

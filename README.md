@@ -2,11 +2,4 @@
 
 unofficial node.js library for interacting with Chatango.com
 
-<!--
-thanks to 
- - [Coco.py](https://github.com/Sorch/coco)
- - [ch.py](https://github.com/Nullspeaker/ch.py)
- 
-for figuring out how the bulk of Chatango works
-
-nyet-->
+thanks to [Coco.py](https://github.com/Sorch/coco) and [ch.py](https://github.com/Nullspeaker/ch.py)
