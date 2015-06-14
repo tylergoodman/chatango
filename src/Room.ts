@@ -74,6 +74,11 @@ class Room extends events.EventEmitter {
         }
       })
       .then(() => {
+        if (this.user.style.stylesOn) {
+          this._send('msgbg:1');
+        }
+      })
+      .then(() => {
         winston.log('info', `Joined room ${this.name}`);
         this.emit('join', this);
         return this;

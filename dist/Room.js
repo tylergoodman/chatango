@@ -65,6 +65,11 @@ var Room = (function (_super) {
             }
         })
             .then(function () {
+            if (_this.user.style.stylesOn) {
+                _this._send('msgbg:1');
+            }
+        })
+            .then(function () {
             winston.log('info', "Joined room " + _this.name);
             _this.emit('join', _this);
             return _this;
@@ -146,9 +151,9 @@ var Room = (function (_super) {
         switch (command) {
             case 'ok':
                 (function () {
-                    var owner = args[0], sessionid = args[1], session_status = args[2], user_name = args[3], server_time = args[4], my_ip = args[5], moderators = args[6], server_id = args[7];
+                    var owner = args[0], session_id = args[1], session_status = args[2], user_name = args[3], server_time = args[4], my_ip = args[5], moderators = args[6], server_id = args[7];
                     _this.owner = owner;
-                    _this.session_id = sessionid;
+                    _this.session_id = session_id;
                     _this.id = server_id;
                     _this.server_time = parseFloat(server_id);
                     if (moderators) {
@@ -159,7 +164,7 @@ var Room = (function (_super) {
                         }
                     }
                     if (_this.user.type === User.Type.Anonymous) {
-                        _this.user.username = User.getAnonName("<n" + sessionid.slice(4, 8) + "/>", (_this.server_time | 0).toString());
+                        _this.user.username = User.getAnonName("<n" + session_id.slice(4, 8) + "/>", (_this.server_time | 0).toString());
                     }
                 })();
                 break;
