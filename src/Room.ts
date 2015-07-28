@@ -12,27 +12,39 @@ import util = require('./util');
 
 class Room extends events.EventEmitter {
   name: string;
-  user: User;
-  private _connection: Connection;
+  user: string | User;
 
-  owner: string = ''; // username of the chatango user who owns this room
+  id: string = ''; // room server ID
   session_id: string = ''; // session id, made for us if we don't make it (we don't)
-  id: string = ''; // our unique identifier? useless so far
+  owner: string = ''; // username of the chatango user who owns this room
+  ip: string = ''; // our IP
+  server_time: number = 0; // unix time of the server, used in generating anonymous IDs
+  here_now: number = 0; // number of people in the room (including anonymous/unnamed)
   moderators: util.Set<string> = new util.Set<string>(); // string array of moderator names. populated on connect (if we have the permission to see them)
   users: {[index: string]: User} = {};
-  here_now: number; // number of people in the room (including anonymous/unnamed)
-  server_time: number; // unix time of the server, used in generating anonymous IDs
 
+  private _connection: Connection;
+  private _history: Message.Cache;
+  private _last_message: string;
   private _buffer: string = '';
-  private _firstSend: boolean = true;
+  private _first_send: boolean = true;
+  private _anonymous: boolean = false;
 
   private static TIMEOUT = 3000;
 
-  constructor(name: string, user: User = new User) {
+  constructor(name: string, user: string | User = '', options? : Room.Options) {
     super();
 
     this.name = name;
     this.user = user;
+
+    if (typeof this.user === 'string' && this.user === '') {
+      this._anonymous = true;
+    }
+
+    this._history = new Message.Cache({
+      size: options && options.cache_size || 100
+    });
 
     this._connection = new Connection(this._getServer());
 
@@ -47,67 +59,50 @@ class Room extends events.EventEmitter {
     });
   }
 
-  join(): Promise<Room> {
-    winston.log('verbose', `Joining room ${this.name}`);
-    return this._connection
-      .connect()
-      .then(() => {
-        return new Promise<void>((resolve, reject) => {
-          this.once('init', resolve);
-          this._send(`bauth:${this.name}:${this.session_id}::`);
-        })
-        .timeout(Room.TIMEOUT);
-      })
-      .then(() => {
-        return this._authenticate();
-      })
-      .then(() => {
-        return new Promise<void>((resolve, reject) => {
-          this.once('userlist', resolve);
-          this._send('gparticipants');
-        })
-        .timeout(Room.TIMEOUT);
-      })
-      .then(() => {
-        if (!this.user.hasInited) {
-          return this.user.init();
-        }
-      })
-      .then(() => {
-        if (this.user.style.stylesOn) {
-          this._send('msgbg:1');
-        }
-      })
-      .then(() => {
-        winston.log('info', `Joined room ${this.name}`);
-        this.emit('join', this);
-        return this;
-      })
-      .timeout(Room.TIMEOUT);
+  private _bold: boolean = false;
+  get bold(): boolean {
+    if (this.user instanceof User) {
+      return (<User>this.user).style.bold;
+    }
+    return this._bold;
   }
-
-  leave(): Promise<void> {
-    winston.log('verbose', `Leaving room ${this.name}`);
-    return this._connection.disconnect()
-      .then(() => {
-        winston.log('info', `Left room ${this.name}`);
-        this._reset();
-        this.emit('leave');
-      });
+  set bold(val: boolean) {
+    if (this.user instanceof User) {
+      (<User>this.user).style.bold = val;
+    }
+    this._bold = val;
+  }
+  private _italics: boolean = false;
+  get italics(): boolean {
+    if (this.user instanceof User) {
+      return (<User>this.user).style.italics;
+    }
+    return this._italics;
+  }
+  set italics(val: boolean) {
+    if (this.user instanceof User) {
+      (<User>this.user).style.italics = val;
+    }
+    this._italics = val;
+  }
+  private _underline: boolean = false;
+  get underline(): boolean {
+    if (this.user instanceof User) {
+      return (<User>this.user).style.underline;
+    }
+    return this._underline;
+  }
+  set underline(val: boolean) {
+    if (this.user instanceof User) {
+      (<User>this.user).style.underline = val;
+    }
+    this._underline = val;
   }
 
   private _reset(): Room {
     this._buffer = '';
-    this._firstSend = true;
-    this.users = {};
+    this._first_send = true;
     return this;
-  }
-
-  changeUser(new_user: User): Promise<Room> {
-    return this.leave().then(() => {
-      this.user = new_user;
-      return this.join();
-    });
   }
 
   private _send(command: string): Room;
@@ -116,186 +111,14 @@ class Room extends events.EventEmitter {
     if (_.isArray(command)) {
       command = command.join(':');
     }
-    winston.log('verbose', `Sending command to room ${this.name}: "${command}"`);
-    if (!this._firstSend) {
+    winston.log('debug', `Sending request to room "${this.name}": "${command}"`);
+    if (!this._first_send) {
       command += '\r\n';
     }
-    this._firstSend = false;
+    this._first_send = false;
     command += '\0';
     this._connection.send(command);
     return this;
-  }
-
-  message(content: string): Room {
-    content = _.escape(content);
-
-    if (this.user.style.bold)
-      content = `<b>${content}</b>`;
-    if (this.user.style.italics)
-      content = `<i>${content}</i>`;
-    if (this.user.style.underline)
-      content = `<u>${content}</u>`;
-
-    content.replace('\n', '<br/>');
-
-    var {
-      nameColor,
-      fontSize,
-      textColor,
-      fontFamily
-    } = this.user.style;
-
-    if (this.user.type === User.Type.Anonymous) {
-      nameColor = String(this.server_time | 0).slice(-4);
-    }
-
-    var message = `<n${nameColor}/><f x${fontSize}${textColor}="${fontFamily}">${content}`;
-
-    this._send(['bm', Math.round(15e5 * Math.random()).toString(36), '0', message]);
-    return this;
-  }
-
-  private _authenticate(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      if (this.user.type === User.Type.Anonymous)
-        return resolve();
-
-      if (this.user.type === User.Type.Temporary)
-        this._send(`blogin:${this.user.username}`);
-
-      if (this.user.type === User.Type.Registered)
-        this._send(`blogin:${this.user.username}:${this.user.password}`);
-
-      this.once('auth', resolve);
-    })
-    .timeout(Room.TIMEOUT)
-    .then(() => {
-      this.users[this.user.username] = this.user;
-    });
-  }
-
-  private _handleCommand(command: string, args: string[]): void {
-    winston.log('debug', `Received <${command}> command from room ${this.name}`);
-    switch (command) {
-      case 'ok': // received in response to sending 'bauth' command
-        (() => {
-          var [
-            owner, // owner of the room
-            session_id, // session id (generated for us by Chatango because we didn't send any)
-            session_status, // [N = new, C = not new but not registered, M = not new and registered] (will always be N for us)
-            user_name, // our name in the chat (empty string since we authenticate later)
-            server_time, // unix server time
-            my_ip, // our IP
-            moderators, // semicolon-delineated list of moderators and their permissions
-            server_id // id of the server?
-          ] = args;
-          this.owner = owner;
-          this.session_id = session_id; // possibly useless
-          this.id = server_id; // also possibly useless
-          this.server_time = parseFloat(server_id);
-          if (moderators) {
-            var mods = moderators.split(';');
-            for (var i = 0, len = mods.length; i < len; i++) {
-              // permissions is some integer that I will literally never figure out
-              var [name, permissions] = mods[i].split(',');
-              this.moderators.add(name);
-            }
-          }
-          if (this.user.type === User.Type.Anonymous) {
-            // TODO - un-hack this
-            this.user.username = User.getAnonName(`<n${session_id.slice(4, 8)}/>`, (this.server_time | 0).toString());
-          }
-        })();
-        break;
-      case 'i': // on 'bauth', messages in immediate history (in reverse order)
-        this.emit('history_message', this._parseMessage(args));
-        break;
-      case 'nomore': // emitted if there's history message stream ends before 40 history messages are sent (ie. there are less than 40 immediate history messages)
-        break;
-      case 'inited': // on 'bauth', after history messages stream ends
-        this.emit('init');
-        break;
-      case 'pwdok': // on successful authentication
-      case 'aliasok': // on successful temporary name registration
-        winston.log('info', `Authenticated room ${this.name} as user ${this.user.username}`);
-        this.emit('auth');
-        break;
-      case 'n': // periodically updated
-        this.here_now = parseInt(args[0], 16);
-        break;
-      case 'b':
-        // received when a message is sent from anyone (including self)
-        // same as above, in 'i' command
-        this.emit('message', this._parseMessage(args));
-        break;
-      case 'u':
-        // received when a message is sent from anyone (including self)
-        // not entirely sure what this is for, maybe multi-part messages sent with 'b' event? but they always fit in one frame
-        break;
-      case 'mods':
-        (() => {
-          var [moderators] = args;
-          var mods = moderators.split(';');
-          for (var i = 0, len = mods.length; i < len; i++) {
-            var [name, permissions] = mods[i].split(',');
-            this.moderators.add(name);
-          }
-        })();
-        break;
-      case 'gparticipants':
-        // received when we toggle on receiving updates on the current users in the room
-        // includes a list of users excluding anonymous
-        (() => {
-          var [
-            num_anon_or_temp_users,
-            ...users
-          ] = args;
-          users = users.join(':').split(';');
-          for (var i = 0, len = users.length; i < len; i++) {
-            var [
-              dont_know,
-              joined_at,
-              session_id,
-              user_registered,
-              user_temporary
-            ] = users[i].split(':');
-            var name;
-            if (user_registered === 'None') {
-              name = user_temporary;
-            }
-            else {
-              name = user_registered;
-            }
-            var user;
-            // if we hit outselves, don't re-make ourselves
-            if (name === this.user.username) {
-              user = this.user;
-            }
-            else {
-              user = new User(name, '', User.Type.Registered);
-              this.users[user.username] = user;
-            }
-            user.session_ids.add(session_id);
-            user.joined_at = parseInt(joined_at, 10);
-          }
-          this.emit('userlist', this.users);
-        })();
-        break;
-      case 'show_nlp': // received when we send a message that was rejected due to spam detection
-        winston.log('warn', 'Could not send previous message due to spam detection.');
-        this.emit('flood_ban_warning');
-        break;
-      case 'badalias': // received when we try to register a temporary name that is already in use
-        this.emit('error', new Error('Username is invalid or in use.'));
-        break;
-      case 'nlptb': // received when we get flood banned
-        winston.log('warn', `Flood banned in room ${this.name} as ${this.user.username}`);
-        this.emit('flood_ban');
-        break;
-      default: // catch and warn when we receive a command that we haven't accounted for
-        winston.log('warn', `Received command that has no handler from room ${this.name}: <${command}>: ${args}`);
-        break;
-    }
   }
 
   private _receiveData(data: string): void {
@@ -308,38 +131,16 @@ class Room extends events.EventEmitter {
       commands.pop();
       this._buffer = '';
     }
-    winston.log('silly', `Received commands from room ${this.name}: ${commands}`);
+    winston.log('silly', `Received commands from room "${this.name}": ${commands}`);
     for (var i = 0; i < commands.length; i++) {
       var [command, ...args] = commands[i].split(':');
-      this._handleCommand(command, args);
+      winston.log('debug', `Received command from room "${this.name}": ${command}`);
+      var handler = this[`__command__${command}`];
+      if (handler === void 0) {
+        winston.log('warn', `Received command that has no handler from room "${this.name}": <${command}>: ${args}`);
+      }
+      handler.apply(this, args);
     }
-  }
-
-  private _parseMessage(args: string[]): Message {
-    // TODO - look at these variables again with what you've learned from other commands
-    var [
-      created_at, // unix message creation time
-      user_registered, // name of the message sender (if registered)
-      user_temporary, // name of the message sender (if using a temporary name)
-      user_session_id,
-      user_id, // mod only, seems to be a function of the user_session_id
-      message_id,
-      user_ip, // mod only
-      no_idea, // always 0?
-      no_idea_always_empty,
-      ...raw_message
-    ] = args;
-    var raw = raw_message.join(':');
-    var name = user_registered || user_temporary;
-    if (!name) {
-      name = User.getAnonName(raw, user_session_id);
-    }
-    var message = Message.parse(raw);
-    message.id = message_id;
-    message.room = this;
-    message.user = this.users[name] || name;
-    message.created_at = parseInt(created_at, 10);
-    return message;
   }
 
   private _getServer(room_name: string = this.name): string {
@@ -373,14 +174,472 @@ class Room extends events.EventEmitter {
     var maxnum = _.sum(tsweights.map((n) => { return n[1]; }));
     var cumfreq = 0;
     for (var i = 0; i < tsweights.length; i++) {
-      var weight: [string, number] = tsweights[i]; 
+      var weight: [string, number] = tsweights[i];
       cumfreq += weight[1] / maxnum;
       if (num <= cumfreq) {
         return `s${weight[0]}.chatango.com`;
       }
     }
-    throw new Error(`Couldn't find host server for room name ${room_name}`);
+    throw new Error(`Couldn't find host server for room ${room_name}`);
+  }
+
+
+  /**
+   * Public Room commands
+   */
+
+  /**
+   * Connect to a room
+   * 
+   * @fires connect
+   */
+  connect(): Promise<Room> {
+    winston.log('verbose', `Joining room ${this.name}`);
+    return this._connection
+      .connect()
+      .then(() => {
+        return new Promise<void>((resolve, reject) => {
+          this.once('_init', resolve);
+          this._send(`bauth:${this.name}:${this.session_id}::`);
+        })
+        .timeout(Room.TIMEOUT);
+      })
+      .then(() => {
+        if (this._anonymous)
+          return;
+
+        return new Promise<void>((resolve, reject) => {
+          this.once('_auth', resolve);
+          if (typeof this.user === 'string')
+            return this._send(`blogin:${this.user}`);
+
+          if (this.user instanceof User)
+            return this._send(`blogin:${(<User>this.user).name}:${(<User>this.user).password}`);
+
+          throw new Error(`Cannot join room as user "${this.user}"`);
+        })
+        .timeout(Room.TIMEOUT);
+      })
+      .then(() => {
+        return new Promise<void>((resolve, reject) => {
+          this.once('_userlist', resolve);
+          this._send('gparticipants');
+        })
+        .timeout(Room.TIMEOUT);
+      })
+      .then(() => {
+        if (this.user instanceof User) {
+          return (<User>this.user).init();
+        }
+      })
+      .then(() => {
+        if (this.user instanceof User && (<User>this.user).style.stylesOn) {
+          this._send('msgbg:1');
+        }
+      })
+      .then(() => {
+        winston.log('info', `Joined room ${this.name}`);
+        this.emit('connect', this);
+        return this;
+      })
+      .timeout(Room.TIMEOUT);
+  }
+
+  /**
+   * Leave a room
+   * 
+   * @fires disconnect
+   */
+  disconnect(): Promise<void> {
+    winston.log('verbose', `Leaving room ${this.name}`);
+    return this._connection.disconnect()
+      .then(() => {
+        winston.log('info', `Left room ${this.name}`);
+        this._reset();
+        this.emit('disconnect');
+      });
+  }
+
+  /**
+   * Send a message to the room
+   * @param content - the message content
+   */
+  message(content: string): Room {
+    this._last_message = content;
+
+    content = _.escape(content);
+
+    if (this.bold)
+      content = `<b>${content}</b>`;
+    if (this.italics)
+      content = `<i>${content}</i>`;
+    if (this.underline)
+      content = `<u>${content}</u>`;
+
+    content.replace('\n', '<br/>');
+
+    var message;
+    if (this.user instanceof User) {
+      var {
+        nameColor,
+        fontSize,
+        textColor,
+        fontFamily
+      } = (<User>this.user).style;
+      message = `<n${nameColor}/><f x${fontSize}${textColor}="${fontFamily}">${content}`;
+    }
+    else if (typeof this.user === 'string' && !this._anonymous) {
+      message = `${content}`;
+    }
+    else {
+      message = `<n${String(this.server_time | 0).slice(-4)}/>${content}`;
+    }
+
+    this._send(['bm', Math.round(15e5 * Math.random()).toString(36), '0', message]);
+    return this;
+  }
+
+
+  /**
+   * Room command handlers
+   * Data in the form of 'commands' from the Room connection is delegated to one of these functions
+   * all parameters are always strings
+   */
+
+  /**
+   * 'ok' command
+   * received in response to sending a 'bauth' command
+   * @param owner - The name of the User who created the Room
+   * @param session_id - a session identifier delegated to us by Chatango
+   * @param session_status - the status of the session_id [N = new, C = not new but not registered, M = not new and registered]
+   * @param username - our name in the Room
+   * @param server_time - Room's current unix server time
+   * @param ip - our IP
+   * @param moderators - semicolon-delineated list of a moderator and their permissions
+   * @param server_id - ID of the server
+   */
+  __command__ok(owner: string, session_id: string, session_status: string, username: string, server_time: string, ip: string, moderators: string, server_id: string): void {
+    this.owner = owner;
+    this.session_id = session_id;
+    this.ip = ip;
+    this.id = server_id;
+    this.server_time = parseFloat(server_time);
+    if (moderators) {
+      var mods = moderators.split(';');
+      for (var i = 0, len = mods.length; i < len; i++) {
+        // permissions is some integer that I will literally never figure out
+        var [name, permissions] = mods[i].split(',');
+        this.moderators.add(name);
+      }
+    }
+    // we get our name here if we're connecting anonymously
+    if (typeof this.user === 'string' && (<string>this.user).length === 0) {
+      this.user = User.parseAnonName(`<n${session_id.slice(4, 8)}/>`, (this.server_time | 0).toString());
+    }
+  }
+
+  /**
+   * 'i' command
+   * received in response to sending a 'bauth' request
+   * represents one message in the Room's history of messages
+   * received in reverse order
+   */
+  __command__i(): void {
+    // var message = this._parseMessage.apply(this, arguments);
+    // this._history.push(message);
+    // this.emit('historyMessage', message); // move this, make special accomidations, reverse the list and publish it all
+  }
+
+  /**
+   * 'nomore' command
+   * received in response to sending a 'bauth' request
+   * received if history message stream ends before 40 history messages
+   */
+  __command__nomore(): void {
+    // noop
+  }
+
+  /**
+   * 'inited' command
+   * received in response to sending a 'bauth' request
+   * signals the end of the history message stream, and that we have successfully initialized
+   * @fires (internal) _init
+   */
+  __command__inited(): void {
+    this.emit('_init');
+  }
+
+  /**
+   * 'pwdok' command
+   * received in response to sending a 'bauth' request
+   * signals that the password for the registered user is correct, and that we have successfully authenticated
+   * @fires (internal) _auth
+   */
+  __command__pwdok(): void {
+    winston.log('info', `Successfully authenticated to room "${this.name}" as registered user "${this.user.toString()}"`);
+    this.emit('_auth');
+  }
+
+  /**
+   * 'aliasok' command
+   * received in response to sending a 'bauth' request
+   * signals that the temporary name we requested is available, and that we have successfully authenticated
+   * @fires (internal) _auth
+   */
+  __command__aliasok(): void {
+    winston.log('info', `Successfully authenticated to room "${this.name}" as temporary user "${this.user.toString()}"`);
+    this.emit('_auth');
+  }
+
+  /**
+   * 'n' command
+   * received periodically
+   * @param num_users - number of the users in the room, in hexidecimal
+   */
+  __command__n(num_users: string): void {
+    this.here_now = parseInt(num_users, 16);
+  }
+
+  /**
+   * 'b' command
+   * received when a message is sent from anyone (including us)
+   */
+  __command__b(): void {
+    var message = this._parseMessage.apply(this, arguments);
+    this._history.push(message);
+  }
+
+  /**
+   * 'u' command
+   * received immediately after every 'b' command
+   * maps message IDs with their actual IDs
+   * I don't know why
+   * @param old_id - the ID that the message was originally sent with
+   * @param new_id - the ID that the message uses for deleting, etc.
+   * @fires message
+   */
+  __command__u(old_id: string, new_id: string): void {
+    var message = this._history.publish(old_id, new_id);
+    winston.log('info', `Received message in room "${this.name}": ${message.toString()}`);
+    this.emit('message', message);
+  }
+
+  /**
+   * 'mods' command
+   * received in response to any mod-editing request made by any user (removemod, addmod, updmod)
+   * @param modlist - semicolon-delineated list of moderators and their permissions
+   * @fires modUpdate
+   */
+  __command__mods(modlist: string): void {
+    var mods = modlist.split(';');
+    for (var i = 0, len = mods.length; i < len; i++) {
+      var [name, permissions] = mods[i].split(',');
+      this.moderators.add(name);
+    }
+    winston.log('verbose', `Received moderator information for room "${this.name}"`);
+    this.emit('modUpdate');
+  }
+
+  /**
+   * 'gparticipants' command
+   * received in response to sending a 'gparticipants' request
+   * @param num_unregistered - the number of unregistered users in the room
+   * @param ...users - semicolon-delineated list of users
+   * @fires (internal) _userlist
+   */
+  __command__gparticipants(num_unregistered: string, ...users: string[]): void {
+    users = users.join(':').split(';');
+    for (var i = 0, len = users.length; i < len; i++) {
+      var user_string = users[i];
+      if (user_string === '') { // no one here
+        break;
+      }
+      var [
+        id, // id unique to the connection
+        joined_at, // unix join time
+        session_id, // id unique to the first 8 digits of user's cookie-based session id
+        name, // name of the registered user
+        None // always 'None'?
+      ] = user_string.split(':');
+      name = name.toLowerCase();
+      var user = this.users[name];
+      if (user === void 0) {
+        user = new User(name);
+        this.users[name] = user;
+        user.init();
+        winston.log('debug', `First time seeing registered user "${name}"`);
+      }
+      user.joined_at = parseFloat(joined_at);
+    }
+    winston.log('verbose', `Received registered user information for room "${this.name}"`);
+    this.emit('_userlist');
+  }
+
+  /**
+   * 'participant' command
+   * received periodically as users join and leave after receiving the 'gparticipants' command
+   * @param status - [0 = leave, 1 = join], whether the event is a join or a leave event
+   * @param id - the user's unique connection id
+   * @param session_id - the user's unique session id
+   * @param user_registered - [name, 'None'] name of the message sender (if registered)
+   * @param user_temporary - [name, 'None'] name of the message sender (if using a temporary name)
+   * @param no_idea - don't know, always empty string
+   * @param joined_at - server time of the user joining
+   * @fires join
+   * @fires leave
+   */
+  __command__participant(status: string, id: string, session_id: string, user_registered: string, user_temporary: string, no_idea: string, joined_at: string): void {
+    var user: string | User;
+    if (user_registered === 'None' && user_temporary === 'None') {
+      user = User.parseAnonName(`<n${session_id.slice(4, 8)}/>`, joined_at.slice(0, joined_at.indexOf('.')));
+    }
+    else if (user_temporary !== 'None') {
+      user = user_temporary.toLowerCase();
+    }
+    else {
+      user_registered = user_registered.toLowerCase();
+      user = this.users[user_registered];
+      if (user === void 0) {
+        user = new User(user_registered);
+        this.users[user_registered] = <User>user;
+        winston.log('debug', `First time seeing registered user "${name}"`);
+      }
+    }
+    if (status === '1') {
+      if (user instanceof User) {
+        (<User>user).joined_at = (<User>user).joined_at || parseFloat(joined_at);
+        (<User>user).init();
+      }
+      this.emit('join', user);
+    }
+    else {
+      this.emit('leave', user);
+    }
+  }
+
+  /**
+   * 'show_nlp' command
+   * received when we send a message that was rejected due to spam detection
+   * @fires flood_ban_warning
+   */
+  __command__show_nlp(): void {
+    winston.log('warn', `Could not send the following message to room "${this.name}" as user "${this.user.toString()}" due to spam detection:\n${this._last_message}`);
+    this.emit('flood_ban_warning');
+  }
+
+  /**
+   * 'badalias' command
+   * received in response to sending a 'bauth' request
+   * received when we try to authenticate with a temporary name that is already taken
+   * @fires error
+   */
+  __command__badalias(): void {
+    this.emit('error', new Error(`Username "${this.user.toString()}" is invalid or already in use`));
+  }
+
+  /**
+   * 'nlptb' command
+   * received when we get flood banned
+   * @fires flood_ban
+   */
+  __command__nlptb(): void {
+    winston.log('warn', `Flood banned in room "${this.name}" as user "${this.user.toString()}"`);
+    this.emit('flood_ban');
+  }
+
+
+
+  /**
+   * Helpers
+   */
+
+  /**
+   * helper for 'i' and 'b' commands
+   * parses command arguments
+   * @param created_at - server time of the message being sent
+   * @param user_registered - [name, ''] name of the message sender (if registered)
+   * @param user_temporary - [name, ''] name of the message sender (if using a temporary name)
+   * @param user_session_id - session id of the message sender
+   * @param user_id - (moderator only) unique identifier of the message sender, not the same as the user's connection id, seems to be a function of the user's session id
+   * @param message_id - unique id of the message
+   * @param user_ip - (moderator only) IP of the message sender
+   * @param no_idea - don't know, sometimes 0, sometimes 8
+   * @param no_idea2 - don't know, always empty string
+   * @param ...raw_message - message body and tags, potentially split into pieces by previous .split()ing
+   * @returns {Message} - the parsed Message object
+   */
+  private _parseMessage(created_at: string, user_registered: string, user_temporary: string, user_session_id: string, user_id: string, message_id: string, user_ip: string, no_idea: string, no_idea2: string, ...raw_message: string[]): Message {
+    // rejoin message parts
+    var raw = raw_message.join(':');
+    var user: string | User;
+    if (user_registered) {
+      user_registered = user_registered.toLowerCase();
+      user = this.users[user_registered];
+      if (user === void 0) {
+        user = new User(user_registered);
+      }
+      (<User>user)._ips.add(user_ip);
+      (<User>user)._ids.add(user_id);
+    }
+    else if (user_temporary) {
+      user = user_temporary
+    }
+    else {
+      user = User.parseAnonName(raw, user_session_id);
+    }
+    var message = Message.parse(raw);
+    message.id = message_id;
+    message.room = this;
+    message.user = user;
+    message.created_at = parseFloat(created_at);
+    return message;
+  }
+
+  /**
+   * Events
+   */
+
+  /**
+   * Message event
+   * 
+   * @event Room#message
+   * @param {Message} message - the message that was received
+   */
+
+  /**
+   * Join event
+   * 
+   * @event Room#join
+   * @param {string | User} user - the user that joined
+   */
+
+  /**
+   * Leave event
+   * 
+   * @event Room#leave
+   * @param {string | User} user - the user that left
+   */
+
+  /**
+   * Connect event
+   * 
+   * @event Room#connect
+   * @param Room room - this room
+   */
+
+  /**
+   * Disconnect event
+   * 
+   * @event Room#disconnect
+   * @param Room room - this room
+   */
+}
+
+module Room {
+  export interface Options {
+    cache_size: number;
   }
 }
+
 
 export = Room;

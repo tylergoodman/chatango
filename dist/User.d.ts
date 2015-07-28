@@ -5,39 +5,30 @@ import Promise = require('bluebird');
 import Message = require('./Message');
 import util = require('./util');
 declare class User {
-    username: string;
+    name: string;
     password: string;
-    type: User.Type;
     joined_at: number;
-    session_ids: util.Set<string>;
     style: Message.Style;
     background: Message.Background;
-    hasInited: boolean;
+    _ips: util.Set<string>;
+    _ids: util.Set<string>;
     private _cookies;
-    private static endpoint;
-    endpoint_url: string;
-    constructor(username?: string, password?: string, type?: User.Type);
+    ENDPOINT: string;
+    constructor(name: string, password?: string);
     toString(): string;
-    init(): Promise<any>;
+    init(): Promise<void>;
     authenticate(): Promise<void>;
     getStyle(): Promise<Message.Style>;
-    static getStyle(username: string): Promise<Message.Style>;
     setStyle(style?: Message.Style): Promise<Message.Style>;
     getBackground(): Promise<Message.Background>;
-    static getBackground(username: string): Promise<Message.Background>;
     setBackground(background?: Message.Background): Promise<Message.Background>;
     setBackgroundImage(stream: fs.ReadStream): Promise<void>;
     getBackgroundImage(): request.Request;
-    static getBackgroundImage(username: string): request.Request;
     getAvatar(): request.Request;
+    static parseAnonName(message: string, _id: string): string;
+    static getStyle(username: string): Promise<Message.Style>;
+    static getBackground(username: string): Promise<Message.Background>;
+    static getBackgroundImage(username: string): request.Request;
     static getAvatar(username: string): request.Request;
-    static getAnonName(message: string, _id: string): string;
-}
-declare module User {
-    enum Type {
-        Anonymous = 0,
-        Temporary = 1,
-        Registered = 2,
-    }
 }
 export = User;

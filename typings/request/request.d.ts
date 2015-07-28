@@ -62,6 +62,7 @@ declare module 'request' {
 			callback?: (error: any, response: http.IncomingMessage, body: any) => void;
 			jar?: any; // CookieJar
 			form?: any; // Object or string
+			formData?: any;
 			auth?: AuthOptions;
 			oauth?: OAuthOptions;
 			aws?: AWSOptions;

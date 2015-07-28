@@ -5,19 +5,16 @@ import _ = require('lodash');
 import User = require('./User');
 import Room = require('./Room');
 
-
 class Message {
   id: string;
-  room: Room;
-  user: User | string;
+  user: string | User;
   created_at: number;
-
   body: string;
   style: Message.Style = new Message.Style;
 
-  constructor() {
-    
-  }
+  room: Room;
+
+  constructor() {}
 
   toString(): string {
     return `${this.user.toString()}: ${this.body}`;
@@ -29,7 +26,7 @@ class Message {
   }
 
   static parse(raw: string): Message {
-    var ret = new Message;
+    var message = new Message;
 
     var [
       input,
@@ -41,13 +38,13 @@ class Message {
     ] = raw.match(Message.tokens.MESSAGE_PARSE);
 
     if (nameColor)
-      ret.style.nameColor = nameColor;
+      message.style.nameColor = nameColor;
     if (fontSize)
-      ret.style.fontSize = parseInt(fontSize, 10);
+      message.style.fontSize = parseInt(fontSize, 10);
     if (textColor)
-      ret.style.textColor = textColor;
+      message.style.textColor = textColor;
     if (fontFamily)
-      ret.style.fontFamily = parseInt(fontFamily, 10);
+      message.style.fontFamily = parseInt(fontFamily, 10);
 
     body = body.replace(/<br\/>/g, '\n');
 
@@ -55,24 +52,28 @@ class Message {
     while (format = body.match(Message.tokens.FORMAT)) {
       switch (format[1]) {
         case 'b':
-          ret.style.bold = true;
+          message.style.bold = true;
           break;
         case 'i':
-          ret.style.italics = true;
+          message.style.italics = true;
           break;
         case 'u':
-          ret.style.underline = true;
+          message.style.underline = true;
           break;
       }
       body = format[2];
     }
 
     body = _.unescape(body);
-    ret.body = body;
+    message.body = body;
 
-    return ret;
+    return message;
   }
 }
+Message.prototype.id = '';
+Message.prototype.created_at = 0;
+Message.prototype.body = '';
+Message.prototype.user = '';
 
 module Message {
 
@@ -175,6 +176,45 @@ module Message {
     Papyrus,
     Times,
     Typewriter,
+  }
+
+  export class Cache {
+    size: number = 100;
+    private _pending: {[index: string]: Message} = {};
+    private _cache: Message[] = [];
+    private _dict: {[index: string]: Message} = {};
+
+    constructor(options?: Cache.Options) {
+      _.extend(this, options);
+    }
+
+    get(id: string): Message {
+      return this._dict[id];
+    }
+
+    push(message: Message): Cache {
+      // add new message to pending
+      this._pending[message.id] = message;
+      this._cache.push(message);
+
+      // remove front of cache
+      var old: Message = this._cache.shift();
+      delete this._dict[old.id];
+
+      return this;
+    }
+
+    publish(id: string, new_id: string): Message {
+      var message = this._pending[id];
+      message.id = new_id;
+      this._dict[new_id] = message;
+      return message;
+    }
+  }
+  export module Cache {
+    export interface Options {
+      size: number;
+    }
   }
 }
 

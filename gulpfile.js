@@ -27,7 +27,7 @@ gulp.task('build', ['clean'], function () {
 });
 
 gulp.task('test', function (done) {
-  gulp.src('./tests/*.js', { read: false })
+  gulp.src('./test/*.js', { read: false })
     .pipe(mocha({
       colors: true,
       bail: true,

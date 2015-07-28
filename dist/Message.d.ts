@@ -3,11 +3,11 @@ import User = require('./User');
 import Room = require('./Room');
 declare class Message {
     id: string;
-    room: Room;
-    user: User | string;
+    user: string | User;
     created_at: number;
     body: string;
     style: Message.Style;
+    room: Room;
     constructor();
     toString(): string;
     static tokens: {
@@ -64,6 +64,21 @@ declare module Message {
         Papyrus = 6,
         Times = 7,
         Typewriter = 8,
+    }
+    class Cache {
+        size: number;
+        private _pending;
+        private _cache;
+        private _dict;
+        constructor(options?: Cache.Options);
+        get(id: string): Message;
+        push(message: Message): Cache;
+        publish(id: string, new_id: string): Message;
+    }
+    module Cache {
+        interface Options {
+            size: number;
+        }
     }
 }
 export = Message;

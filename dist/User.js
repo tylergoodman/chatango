@@ -7,58 +7,52 @@ var _ = require('lodash');
 var Message = require('./Message');
 var util = require('./util');
 var User = (function () {
-    function User(username, password, type) {
-        if (username === void 0) { username = ''; }
-        if (password === void 0) { password = ''; }
-        this.session_ids = new util.Set();
+    function User(name, password) {
+        this.joined_at = 0;
         this.style = new Message.Style;
         this.background = new Message.Background;
-        this.hasInited = false;
+        this._ips = new util.Set();
+        this._ids = new util.Set();
         this._cookies = request.jar();
-        this.username = username;
+        this.name = name;
         this.password = password;
-        if (type === void 0) {
-            if (!username && !password) {
-                type = User.Type.Anonymous;
-            }
-            else if (!password) {
-                type = User.Type.Temporary;
-            }
-            else {
-                type = User.Type.Registered;
-            }
-        }
-        this.type = type;
     }
-    Object.defineProperty(User.prototype, "endpoint_url", {
+    Object.defineProperty(User.prototype, "ENDPOINT", {
         get: function () {
-            return User.endpoint + "/" + this.username.charAt(0) + "/" + this.username.charAt(1) + "/" + this.username;
+            return "http://ust.chatango.com/profileimg/" + this.name.charAt(0) + "/" + this.name.charAt(1) + "/" + this.name;
         },
         enumerable: true,
         configurable: true
     });
     User.prototype.toString = function () {
-        return this.username + "#" + this.session_ids;
+        return "" + this.name;
     };
     User.prototype.init = function () {
         var _this = this;
-        if (this.type === User.Type.Registered) {
-            return this.authenticate()
-                .then(function () {
-                return _this.getStyle();
-            })
-                .then(function () {
-                return _this.getBackground();
-            })
-                .then(function () {
-                _this.hasInited = true;
-            });
+        var promise;
+        if (this.password) {
+            promise = this.authenticate();
         }
-        return Promise.resolve();
+        else {
+            promise = Promise.resolve();
+        }
+        return promise
+            .then(function () {
+            return _this.getStyle();
+        })
+            .then(function (style) {
+            _this.style = style;
+        })
+            .then(function () {
+            return _this.getBackground();
+        })
+            .then(function (background) {
+            _this.background = background;
+        });
     };
     User.prototype.authenticate = function () {
         var _this = this;
-        winston.log('silly', "Authenticating user " + this.username);
+        winston.log('debug', "Authenticating user \"" + this.name + "\"");
         return new Promise(function (resolve, reject) {
             request({
                 url: 'http://scripts.st.chatango.com/setcookies',
@@ -66,49 +60,46 @@ var User = (function () {
                 jar: _this._cookies,
                 form: {
                     pwd: _this.password,
-                    sid: _this.username
+                    sid: _this.name
                 },
                 headers: {
                     'User-Agent': 'ChatangoJS'
                 }
             }, function (error, response, body) {
                 if (error) {
-                    winston.log('error', "Error while authenticating user " + _this.username + ": " + error);
+                    winston.log('error', "Error while authenticating user \"" + _this.name + "\": " + error);
                     return reject(error);
                 }
-                winston.log('info', "Authentication successful: " + _this.username);
+                winston.log('info', "Authentication successful: \"" + _this.name + "\"");
                 resolve();
             });
         });
     };
     User.prototype.getStyle = function () {
         var _this = this;
-        winston.log('silly', "Getting style for user " + this.username);
+        winston.log('debug', "Getting style for user \"" + this.name + "\"");
         return new Promise(function (resolve, reject) {
-            request(_this.endpoint_url + "/msgstyles.json", function (error, response, body) {
+            request(_this.ENDPOINT + "/msgstyles.json", function (error, response, body) {
                 if (error) {
-                    winston.log('error', "Error while retrieving style for user " + _this.username);
+                    winston.log('error', "Error while retrieving style for user \"" + _this.name + "\"");
                     return reject(error);
                 }
                 if (response.statusCode !== 200) {
-                    winston.log('error', "Error while retrieving style for user " + _this.username + ": " + response.statusMessage);
+                    winston.log('error', "Error while retrieving style for user \"" + _this.name + "\": " + response.statusMessage);
                     return reject(new Error(response.statusCode + ": " + response.statusMessage));
                 }
-                winston.log('verbose', "Retrieved style for user " + _this.username);
-                _this.style = JSON.parse(body);
-                _this.style.fontSize = Number(_this.style.fontSize);
-                _this.style.usebackground = Number(_this.style.usebackground);
-                resolve(_this.style);
+                winston.log('verbose', "Retrieved style for user \"" + _this.name + "\"");
+                var style = JSON.parse(body);
+                style.fontSize = Number(style.fontSize);
+                style.usebackground = Number(style.usebackground);
+                resolve(style);
             });
         });
-    };
-    User.getStyle = function (username) {
-        return new User(username).getStyle();
     };
     User.prototype.setStyle = function (style) {
         var _this = this;
         if (style === void 0) { style = new Message.Style; }
-        winston.log('silly', "Saving style for user " + this.username);
+        winston.log('debug', "Saving style for user \"" + this.name + "\"");
         style = _.extend(this.style, style);
         var data = _.transform(style, function (result, value, key) {
             result[key] = String(value);
@@ -119,7 +110,7 @@ var User = (function () {
                 method: 'POST',
                 jar: _this._cookies,
                 formData: _.extend({
-                    'lo': _this.username,
+                    'lo': _this.name,
                     'p': _this.password,
                 }, data),
                 headers: {
@@ -127,14 +118,14 @@ var User = (function () {
                 }
             }, function (error, response, body) {
                 if (error) {
-                    winston.log('error', "Error while saving style for user " + _this.username + ": " + error);
+                    winston.log('error', "Error while saving style for user \"" + _this.name + "\": " + error);
                     return reject(error);
                 }
                 if (response.statusCode !== 200) {
-                    winston.log('error', "Error while saving style for user " + _this.username + ": " + response.statusMessage);
+                    winston.log('error', "Error while saving style for user \"" + _this.name + "\": " + response.statusMessage);
                     return reject(new Error(response.statusCode + ": " + response.statusMessage));
                 }
-                winston.log('verbose', "Saved style for user " + _this.username);
+                winston.log('verbose', "Saved style for user \"" + _this.name + "\"");
                 _this.style = style;
                 resolve(style);
             });
@@ -142,48 +133,45 @@ var User = (function () {
     };
     User.prototype.getBackground = function () {
         var _this = this;
-        winston.log('silly', "Getting background for user " + this.username);
+        winston.log('debug', "Getting background for user \"" + this.name + "\"");
         return new Promise(function (resolve, reject) {
-            request(_this.endpoint_url + "/msgbg.xml", function (error, response, body) {
+            request(_this.ENDPOINT + "/msgbg.xml", function (error, response, body) {
                 if (error) {
-                    winston.log('error', "Error while retrieving background for user " + _this.username);
+                    winston.log('error', "Error while retrieving background for user \"" + _this.name + "\"");
                     return reject(error);
                 }
                 if (response.statusCode !== 200) {
-                    winston.log('error', "Error while retrieving background for user " + _this.username + ": " + response.statusMessage);
+                    winston.log('error', "Error while retrieving background for user \"" + _this.name + "\": " + response.statusMessage);
                     return reject(new Error(response.statusCode + ": " + response.statusMessage));
                 }
-                winston.log('silly', "Retrieved background for user " + _this.username);
+                winston.log('silly', "Retrieved background for user \"" + _this.name + "\"");
                 resolve(response);
             });
         })
             .then(function (response) {
-            winston.log('silly', "Parsing background for " + _this.username);
+            winston.log('silly', "Parsing background for \"" + _this.name + "\"");
             return new Promise(function (resolve, reject) {
                 if (response.headers['content-type'] === 'image/jpeg') {
-                    winston.log('warn', "User " + _this.username + " has no background data. Using default.");
+                    winston.log('warn', "User \"" + _this.name + "\" has no background data. Using default.");
                     _this.background = new Message.Background;
                     return resolve(_this.background);
                 }
                 xml2js.parseString(response.body, function (err, result) {
                     if (err) {
-                        winston.log('error', "Error while parsing background for user " + _this.username);
+                        winston.log('error', "Error while parsing background for user \"" + _this.name + "\"");
                         return reject(err);
                     }
-                    winston.log('verbose', "Retrieved background for user " + _this.username);
+                    winston.log('verbose', "Retrieved background for user \"" + _this.name + "\"");
                     _this.background = new Message.Background(result);
                     resolve(_this.background);
                 });
             });
         });
     };
-    User.getBackground = function (username) {
-        return new User(username).getBackground();
-    };
     User.prototype.setBackground = function (background) {
         var _this = this;
         if (background === void 0) { background = new Message.Background; }
-        winston.log('silly', "Saving background for user " + this.username);
+        winston.log('silly', "Saving background for user \"" + this.name + "\"");
         background = _.extend(this.background, background);
         return new Promise(function (resolve, reject) {
             request({
@@ -191,7 +179,7 @@ var User = (function () {
                 method: 'POST',
                 jar: _this._cookies,
                 form: _.extend(background, {
-                    'lo': _this.username,
+                    'lo': _this.name,
                     'p': _this.password
                 }),
                 headers: {
@@ -199,14 +187,14 @@ var User = (function () {
                 }
             }, function (error, response, body) {
                 if (error) {
-                    winston.log('error', "Error while saving background for user " + _this.username + ": " + error);
+                    winston.log('error', "Error while saving background for user \"" + _this.name + "\": " + error);
                     return reject(error);
                 }
                 if (response.statusCode !== 200) {
-                    winston.log('error', "Error while saving background for user " + _this.username + ": " + response.statusMessage);
+                    winston.log('error', "Error while saving background for user \"" + _this.name + "\": " + response.statusMessage);
                     return reject(new Error(response.statusCode + ": " + response.statusMessage));
                 }
-                winston.log('verbose', "Saved background for user " + _this.username);
+                winston.log('verbose', "Saved background for user \"" + _this.name + "\"");
                 _this.background = background;
                 resolve(background);
             });
@@ -214,7 +202,7 @@ var User = (function () {
     };
     User.prototype.setBackgroundImage = function (stream) {
         var _this = this;
-        winston.log('silly', "Saving background image for user " + this.username);
+        winston.log('silly', "Saving background image for user \"" + this.name + "\"");
         return new Promise(function (resolve, reject) {
             request({
                 url: 'http://chatango.com/updatemsgbg',
@@ -224,37 +212,31 @@ var User = (function () {
                     'User-Agent': 'ChatangoJS'
                 },
                 formData: {
-                    'lo': _this.username,
+                    'lo': _this.name,
                     'p': _this.password,
                     'Filedata': stream
                 }
             }, function (error, response, body) {
                 if (error) {
-                    winston.log('error', "Error while saving background image for user " + _this.username + ": " + error);
+                    winston.log('error', "Error while saving background image for user \"" + _this.name + "\": " + error);
                     return reject(error);
                 }
                 if (response.statusCode !== 200) {
-                    winston.log('error', "Error while saving background for user " + _this.username + ": " + response.statusMessage + "\nAre you authenticated?");
+                    winston.log('error', "Error while saving background for user \"" + _this.name + "\": " + response.statusMessage + "\nAre you authenticated?");
                     return reject(new Error(response.statusCode + ": " + response.statusMessage));
                 }
-                winston.log('verbose', "Set background image for user " + _this.username);
+                winston.log('verbose', "Set background image for user \"" + _this.name + "\"");
                 resolve();
             });
         });
     };
     User.prototype.getBackgroundImage = function () {
-        return request(this.endpoint_url + "/msgbg.jpg");
-    };
-    User.getBackgroundImage = function (username) {
-        return new User(username).getBackgroundImage();
+        return request(this.ENDPOINT + "/msgbg.jpg");
     };
     User.prototype.getAvatar = function () {
-        return request(this.endpoint_url + "/thumb.jpg");
+        return request(this.ENDPOINT + "/thumb.jpg");
     };
-    User.getAvatar = function (username) {
-        return new User(username).getAvatar();
-    };
-    User.getAnonName = function (message, _id) {
+    User.parseAnonName = function (message, _id) {
         var n_tag = message.match(/^<n(\d{4})\/>/)[1].split('');
         var id = _id.slice(-4).split('');
         var ret = [];
@@ -262,18 +244,22 @@ var User = (function () {
             var val = parseInt(n_tag[i], 10) + parseInt(id[i], 10);
             ret.push(String(val).slice(-1));
         }
-        return 'anon' + ret.join('');
+        var name = 'anon' + ret.join('');
+        winston.log('debug', "Parsed anonymous user name \"" + name + "\"");
+        return name;
     };
-    User.endpoint = 'http://ust.chatango.com/profileimg';
+    User.getStyle = function (username) {
+        return new User(username).getStyle();
+    };
+    User.getBackground = function (username) {
+        return new User(username).getBackground();
+    };
+    User.getBackgroundImage = function (username) {
+        return new User(username).getBackgroundImage();
+    };
+    User.getAvatar = function (username) {
+        return new User(username).getAvatar();
+    };
     return User;
 })();
-var User;
-(function (User) {
-    (function (Type) {
-        Type[Type["Anonymous"] = 0] = "Anonymous";
-        Type[Type["Temporary"] = 1] = "Temporary";
-        Type[Type["Registered"] = 2] = "Registered";
-    })(User.Type || (User.Type = {}));
-    var Type = User.Type;
-})(User || (User = {}));
 module.exports = User;

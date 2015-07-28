@@ -14,6 +14,10 @@ export class Set<T> {
   }
 
   add(element: T): Set<T> {
+    // don't want falsy values
+    if (!element) {
+      return this;
+    }
     if (!this.has(element)) {
       this.elements.push(element);
     }

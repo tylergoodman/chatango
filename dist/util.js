@@ -15,6 +15,9 @@ var Set = (function () {
         configurable: true
     });
     Set.prototype.add = function (element) {
+        if (!element) {
+            return this;
+        }
         if (!this.has(element)) {
             this.elements.push(element);
         }

@@ -2,8 +2,7 @@
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
-    __.prototype = b.prototype;
-    d.prototype = new __();
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
 var events = require('events');
 var _ = require('lodash');
@@ -15,19 +14,32 @@ var Message = require('./Message');
 var util = require('./util');
 var Room = (function (_super) {
     __extends(Room, _super);
-    function Room(name, user) {
+    function Room(name, user, options) {
         var _this = this;
-        if (user === void 0) { user = new User; }
+        if (user === void 0) { user = ''; }
         _super.call(this);
-        this.owner = '';
-        this.session_id = '';
         this.id = '';
+        this.session_id = '';
+        this.owner = '';
+        this.ip = '';
+        this.server_time = 0;
+        this.here_now = 0;
         this.moderators = new util.Set();
         this.users = {};
         this._buffer = '';
-        this._firstSend = true;
+        this._first_send = true;
+        this._anonymous = false;
+        this._bold = false;
+        this._italics = false;
+        this._underline = false;
         this.name = name;
         this.user = user;
+        if (typeof this.user === 'string' && this.user === '') {
+            this._anonymous = true;
+        }
+        this._history = new Message.Cache({
+            size: options && options.cache_size || 100
+        });
         this._connection = new Connection(this._getServer());
         this._connection.on('data', this._receiveData.bind(this));
         this._connection.on('close', this._reset.bind(this));
@@ -37,210 +49,71 @@ var Room = (function (_super) {
             throw err;
         });
     }
-    Room.prototype.join = function () {
-        var _this = this;
-        winston.log('verbose', "Joining room " + this.name);
-        return this._connection
-            .connect()
-            .then(function () {
-            return new Promise(function (resolve, reject) {
-                _this.once('init', resolve);
-                _this._send("bauth:" + _this.name + ":" + _this.session_id + "::");
-            })
-                .timeout(Room.TIMEOUT);
-        })
-            .then(function () {
-            return _this._authenticate();
-        })
-            .then(function () {
-            return new Promise(function (resolve, reject) {
-                _this.once('userlist', resolve);
-                _this._send('gparticipants');
-            })
-                .timeout(Room.TIMEOUT);
-        })
-            .then(function () {
-            if (!_this.user.hasInited) {
-                return _this.user.init();
+    Object.defineProperty(Room.prototype, "bold", {
+        get: function () {
+            if (this.user instanceof User) {
+                return this.user.style.bold;
             }
-        })
-            .then(function () {
-            if (_this.user.style.stylesOn) {
-                _this._send('msgbg:1');
+            return this._bold;
+        },
+        set: function (val) {
+            if (this.user instanceof User) {
+                this.user.style.bold = val;
             }
-        })
-            .then(function () {
-            winston.log('info', "Joined room " + _this.name);
-            _this.emit('join', _this);
-            return _this;
-        })
-            .timeout(Room.TIMEOUT);
-    };
-    Room.prototype.leave = function () {
-        var _this = this;
-        winston.log('verbose', "Leaving room " + this.name);
-        return this._connection.disconnect()
-            .then(function () {
-            winston.log('info', "Left room " + _this.name);
-            _this._reset();
-            _this.emit('leave');
-        });
-    };
+            this._bold = val;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Room.prototype, "italics", {
+        get: function () {
+            if (this.user instanceof User) {
+                return this.user.style.italics;
+            }
+            return this._italics;
+        },
+        set: function (val) {
+            if (this.user instanceof User) {
+                this.user.style.italics = val;
+            }
+            this._italics = val;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Room.prototype, "underline", {
+        get: function () {
+            if (this.user instanceof User) {
+                return this.user.style.underline;
+            }
+            return this._underline;
+        },
+        set: function (val) {
+            if (this.user instanceof User) {
+                this.user.style.underline = val;
+            }
+            this._underline = val;
+        },
+        enumerable: true,
+        configurable: true
+    });
     Room.prototype._reset = function () {
         this._buffer = '';
-        this._firstSend = true;
-        this.users = {};
+        this._first_send = true;
         return this;
-    };
-    Room.prototype.changeUser = function (new_user) {
-        var _this = this;
-        return this.leave().then(function () {
-            _this.user = new_user;
-            return _this.join();
-        });
     };
     Room.prototype._send = function (command) {
         if (_.isArray(command)) {
             command = command.join(':');
         }
-        winston.log('verbose', "Sending command to room " + this.name + ": \"" + command + "\"");
-        if (!this._firstSend) {
+        winston.log('debug', "Sending request to room \"" + this.name + "\": \"" + command + "\"");
+        if (!this._first_send) {
             command += '\r\n';
         }
-        this._firstSend = false;
+        this._first_send = false;
         command += '\0';
         this._connection.send(command);
         return this;
-    };
-    Room.prototype.message = function (content) {
-        content = _.escape(content);
-        if (this.user.style.bold)
-            content = "<b>" + content + "</b>";
-        if (this.user.style.italics)
-            content = "<i>" + content + "</i>";
-        if (this.user.style.underline)
-            content = "<u>" + content + "</u>";
-        content.replace('\n', '<br/>');
-        var _a = this.user.style, nameColor = _a.nameColor, fontSize = _a.fontSize, textColor = _a.textColor, fontFamily = _a.fontFamily;
-        if (this.user.type === User.Type.Anonymous) {
-            nameColor = String(this.server_time | 0).slice(-4);
-        }
-        var message = "<n" + nameColor + "/><f x" + fontSize + textColor + "=\"" + fontFamily + "\">" + content;
-        this._send(['bm', Math.round(15e5 * Math.random()).toString(36), '0', message]);
-        return this;
-    };
-    Room.prototype._authenticate = function () {
-        var _this = this;
-        return new Promise(function (resolve, reject) {
-            if (_this.user.type === User.Type.Anonymous)
-                return resolve();
-            if (_this.user.type === User.Type.Temporary)
-                _this._send("blogin:" + _this.user.username);
-            if (_this.user.type === User.Type.Registered)
-                _this._send("blogin:" + _this.user.username + ":" + _this.user.password);
-            _this.once('auth', resolve);
-        })
-            .timeout(Room.TIMEOUT)
-            .then(function () {
-            _this.users[_this.user.username] = _this.user;
-        });
-    };
-    Room.prototype._handleCommand = function (command, args) {
-        var _this = this;
-        winston.log('debug', "Received <" + command + "> command from room " + this.name);
-        switch (command) {
-            case 'ok':
-                (function () {
-                    var owner = args[0], session_id = args[1], session_status = args[2], user_name = args[3], server_time = args[4], my_ip = args[5], moderators = args[6], server_id = args[7];
-                    _this.owner = owner;
-                    _this.session_id = session_id;
-                    _this.id = server_id;
-                    _this.server_time = parseFloat(server_id);
-                    if (moderators) {
-                        var mods = moderators.split(';');
-                        for (var i = 0, len = mods.length; i < len; i++) {
-                            var _a = mods[i].split(','), name = _a[0], permissions = _a[1];
-                            _this.moderators.add(name);
-                        }
-                    }
-                    if (_this.user.type === User.Type.Anonymous) {
-                        _this.user.username = User.getAnonName("<n" + session_id.slice(4, 8) + "/>", (_this.server_time | 0).toString());
-                    }
-                })();
-                break;
-            case 'i':
-                this.emit('history_message', this._parseMessage(args));
-                break;
-            case 'nomore':
-                break;
-            case 'inited':
-                this.emit('init');
-                break;
-            case 'pwdok':
-            case 'aliasok':
-                winston.log('info', "Authenticated room " + this.name + " as user " + this.user.username);
-                this.emit('auth');
-                break;
-            case 'n':
-                this.here_now = parseInt(args[0], 16);
-                break;
-            case 'b':
-                this.emit('message', this._parseMessage(args));
-                break;
-            case 'u':
-                break;
-            case 'mods':
-                (function () {
-                    var moderators = args[0];
-                    var mods = moderators.split(';');
-                    for (var i = 0, len = mods.length; i < len; i++) {
-                        var _a = mods[i].split(','), name = _a[0], permissions = _a[1];
-                        _this.moderators.add(name);
-                    }
-                })();
-                break;
-            case 'gparticipants':
-                (function () {
-                    var num_anon_or_temp_users = args[0], users = args.slice(1);
-                    users = users.join(':').split(';');
-                    for (var i = 0, len = users.length; i < len; i++) {
-                        var _a = users[i].split(':'), dont_know = _a[0], joined_at = _a[1], session_id = _a[2], user_registered = _a[3], user_temporary = _a[4];
-                        var name;
-                        if (user_registered === 'None') {
-                            name = user_temporary;
-                        }
-                        else {
-                            name = user_registered;
-                        }
-                        var user;
-                        if (name === _this.user.username) {
-                            user = _this.user;
-                        }
-                        else {
-                            user = new User(name, '', User.Type.Registered);
-                            _this.users[user.username] = user;
-                        }
-                        user.session_ids.add(session_id);
-                        user.joined_at = parseInt(joined_at, 10);
-                    }
-                    _this.emit('userlist', _this.users);
-                })();
-                break;
-            case 'show_nlp':
-                winston.log('warn', 'Could not send previous message due to spam detection.');
-                this.emit('flood_ban_warning');
-                break;
-            case 'badalias':
-                this.emit('error', new Error('Username is invalid or in use.'));
-                break;
-            case 'nlptb':
-                winston.log('warn', "Flood banned in room " + this.name + " as " + this.user.username);
-                this.emit('flood_ban');
-                break;
-            default:
-                winston.log('warn', "Received command that has no handler from room " + this.name + ": <" + command + ">: " + args);
-                break;
-        }
     };
     Room.prototype._receiveData = function (data) {
         this._buffer += data;
@@ -252,25 +125,16 @@ var Room = (function (_super) {
             commands.pop();
             this._buffer = '';
         }
-        winston.log('silly', "Received commands from room " + this.name + ": " + commands);
+        winston.log('silly', "Received commands from room \"" + this.name + "\": " + commands);
         for (var i = 0; i < commands.length; i++) {
             var _a = commands[i].split(':'), command = _a[0], args = _a.slice(1);
-            this._handleCommand(command, args);
+            winston.log('debug', "Received command from room \"" + this.name + "\": " + command);
+            var handler = this[("__command__" + command)];
+            if (handler === void 0) {
+                winston.log('warn', "Received command that has no handler from room \"" + this.name + "\": <" + command + ">: " + args);
+            }
+            handler.apply(this, args);
         }
-    };
-    Room.prototype._parseMessage = function (args) {
-        var created_at = args[0], user_registered = args[1], user_temporary = args[2], user_session_id = args[3], user_id = args[4], message_id = args[5], user_ip = args[6], no_idea = args[7], no_idea_always_empty = args[8], raw_message = args.slice(9);
-        var raw = raw_message.join(':');
-        var name = user_registered || user_temporary;
-        if (!name) {
-            name = User.getAnonName(raw, user_session_id);
-        }
-        var message = Message.parse(raw);
-        message.id = message_id;
-        message.room = this;
-        message.user = this.users[name] || name;
-        message.created_at = parseInt(created_at, 10);
-        return message;
     };
     Room.prototype._getServer = function (room_name) {
         if (room_name === void 0) { room_name = this.name; }
@@ -306,7 +170,236 @@ var Room = (function (_super) {
                 return "s" + weight[0] + ".chatango.com";
             }
         }
-        throw new Error("Couldn't find host server for room name " + room_name);
+        throw new Error("Couldn't find host server for room " + room_name);
+    };
+    Room.prototype.connect = function () {
+        var _this = this;
+        winston.log('verbose', "Joining room " + this.name);
+        return this._connection
+            .connect()
+            .then(function () {
+            return new Promise(function (resolve, reject) {
+                _this.once('_init', resolve);
+                _this._send("bauth:" + _this.name + ":" + _this.session_id + "::");
+            })
+                .timeout(Room.TIMEOUT);
+        })
+            .then(function () {
+            if (_this._anonymous)
+                return;
+            return new Promise(function (resolve, reject) {
+                _this.once('_auth', resolve);
+                if (typeof _this.user === 'string')
+                    return _this._send("blogin:" + _this.user);
+                if (_this.user instanceof User)
+                    return _this._send("blogin:" + _this.user.name + ":" + _this.user.password);
+                throw new Error("Cannot join room as user \"" + _this.user + "\"");
+            })
+                .timeout(Room.TIMEOUT);
+        })
+            .then(function () {
+            return new Promise(function (resolve, reject) {
+                _this.once('_userlist', resolve);
+                _this._send('gparticipants');
+            })
+                .timeout(Room.TIMEOUT);
+        })
+            .then(function () {
+            if (_this.user instanceof User) {
+                return _this.user.init();
+            }
+        })
+            .then(function () {
+            if (_this.user instanceof User && _this.user.style.stylesOn) {
+                _this._send('msgbg:1');
+            }
+        })
+            .then(function () {
+            winston.log('info', "Joined room " + _this.name);
+            _this.emit('connect', _this);
+            return _this;
+        })
+            .timeout(Room.TIMEOUT);
+    };
+    Room.prototype.disconnect = function () {
+        var _this = this;
+        winston.log('verbose', "Leaving room " + this.name);
+        return this._connection.disconnect()
+            .then(function () {
+            winston.log('info', "Left room " + _this.name);
+            _this._reset();
+            _this.emit('disconnect');
+        });
+    };
+    Room.prototype.message = function (content) {
+        this._last_message = content;
+        content = _.escape(content);
+        if (this.bold)
+            content = "<b>" + content + "</b>";
+        if (this.italics)
+            content = "<i>" + content + "</i>";
+        if (this.underline)
+            content = "<u>" + content + "</u>";
+        content.replace('\n', '<br/>');
+        var message;
+        if (this.user instanceof User) {
+            var _a = this.user.style, nameColor = _a.nameColor, fontSize = _a.fontSize, textColor = _a.textColor, fontFamily = _a.fontFamily;
+            message = "<n" + nameColor + "/><f x" + fontSize + textColor + "=\"" + fontFamily + "\">" + content;
+        }
+        else if (typeof this.user === 'string' && !this._anonymous) {
+            message = "" + content;
+        }
+        else {
+            message = "<n" + String(this.server_time | 0).slice(-4) + "/>" + content;
+        }
+        this._send(['bm', Math.round(15e5 * Math.random()).toString(36), '0', message]);
+        return this;
+    };
+    Room.prototype.__command__ok = function (owner, session_id, session_status, username, server_time, ip, moderators, server_id) {
+        this.owner = owner;
+        this.session_id = session_id;
+        this.ip = ip;
+        this.id = server_id;
+        this.server_time = parseFloat(server_time);
+        if (moderators) {
+            var mods = moderators.split(';');
+            for (var i = 0, len = mods.length; i < len; i++) {
+                var _a = mods[i].split(','), name = _a[0], permissions = _a[1];
+                this.moderators.add(name);
+            }
+        }
+        if (typeof this.user === 'string' && this.user.length === 0) {
+            this.user = User.parseAnonName("<n" + session_id.slice(4, 8) + "/>", (this.server_time | 0).toString());
+        }
+    };
+    Room.prototype.__command__i = function () {
+    };
+    Room.prototype.__command__nomore = function () {
+    };
+    Room.prototype.__command__inited = function () {
+        this.emit('_init');
+    };
+    Room.prototype.__command__pwdok = function () {
+        winston.log('info', "Successfully authenticated to room \"" + this.name + "\" as registered user \"" + this.user.toString() + "\"");
+        this.emit('_auth');
+    };
+    Room.prototype.__command__aliasok = function () {
+        winston.log('info', "Successfully authenticated to room \"" + this.name + "\" as temporary user \"" + this.user.toString() + "\"");
+        this.emit('_auth');
+    };
+    Room.prototype.__command__n = function (num_users) {
+        this.here_now = parseInt(num_users, 16);
+    };
+    Room.prototype.__command__b = function () {
+        var message = this._parseMessage.apply(this, arguments);
+        this._history.push(message);
+    };
+    Room.prototype.__command__u = function (old_id, new_id) {
+        var message = this._history.publish(old_id, new_id);
+        winston.log('info', "Received message in room \"" + this.name + "\": " + message.toString());
+        this.emit('message', message);
+    };
+    Room.prototype.__command__mods = function (modlist) {
+        var mods = modlist.split(';');
+        for (var i = 0, len = mods.length; i < len; i++) {
+            var _a = mods[i].split(','), name = _a[0], permissions = _a[1];
+            this.moderators.add(name);
+        }
+        winston.log('verbose', "Received moderator information for room \"" + this.name + "\"");
+        this.emit('modUpdate');
+    };
+    Room.prototype.__command__gparticipants = function (num_unregistered) {
+        var users = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            users[_i - 1] = arguments[_i];
+        }
+        users = users.join(':').split(';');
+        for (var i = 0, len = users.length; i < len; i++) {
+            var user_string = users[i];
+            if (user_string === '') {
+                break;
+            }
+            var _a = user_string.split(':'), id = _a[0], joined_at = _a[1], session_id = _a[2], name = _a[3], None = _a[4];
+            name = name.toLowerCase();
+            var user = this.users[name];
+            if (user === void 0) {
+                user = new User(name);
+                this.users[name] = user;
+                user.init();
+                winston.log('debug', "First time seeing registered user \"" + name + "\"");
+            }
+            user.joined_at = parseFloat(joined_at);
+        }
+        winston.log('verbose', "Received registered user information for room \"" + this.name + "\"");
+        this.emit('_userlist');
+    };
+    Room.prototype.__command__participant = function (status, id, session_id, user_registered, user_temporary, no_idea, joined_at) {
+        var user;
+        if (user_registered === 'None' && user_temporary === 'None') {
+            user = User.parseAnonName("<n" + session_id.slice(4, 8) + "/>", joined_at.slice(0, joined_at.indexOf('.')));
+        }
+        else if (user_temporary !== 'None') {
+            user = user_temporary.toLowerCase();
+        }
+        else {
+            user_registered = user_registered.toLowerCase();
+            user = this.users[user_registered];
+            if (user === void 0) {
+                user = new User(user_registered);
+                winston.log('debug', "First time seeing registered user \"" + name + "\"");
+            }
+        }
+        if (status === '1') {
+            if (user instanceof User) {
+                this.users[user_registered] = user;
+                user.joined_at = user.joined_at || parseFloat(joined_at);
+                user.init();
+            }
+            this.emit('join', user);
+        }
+        else {
+            this.emit('leave', user);
+        }
+    };
+    Room.prototype.__command__show_nlp = function () {
+        winston.log('warn', "Could not send the following message to room \"" + this.name + "\" as user \"" + this.user.toString() + "\" due to spam detection:\n" + this._last_message);
+        this.emit('flood_ban_warning');
+    };
+    Room.prototype.__command__badalias = function () {
+        this.emit('error', new Error("Username \"" + this.user.toString() + "\" is invalid or already in use"));
+    };
+    Room.prototype.__command__nlptb = function () {
+        winston.log('warn', "Flood banned in room \"" + this.name + "\" as user \"" + this.user.toString() + "\"");
+        this.emit('flood_ban');
+    };
+    Room.prototype._parseMessage = function (created_at, user_registered, user_temporary, user_session_id, user_id, message_id, user_ip, no_idea, no_idea2) {
+        var raw_message = [];
+        for (var _i = 9; _i < arguments.length; _i++) {
+            raw_message[_i - 9] = arguments[_i];
+        }
+        var raw = raw_message.join(':');
+        var user;
+        if (user_registered) {
+            user_registered = user_registered.toLowerCase();
+            user = this.users[user_registered];
+            if (user === void 0) {
+                user = new User(user_registered);
+            }
+            user._ips.add(user_ip);
+            user._ids.add(user_id);
+        }
+        else if (user_temporary) {
+            user = user_temporary;
+        }
+        else {
+            user = User.parseAnonName(raw, user_session_id);
+        }
+        var message = Message.parse(raw);
+        message.id = message_id;
+        message.room = this;
+        message.user = user;
+        message.created_at = parseFloat(created_at);
+        return message;
     };
     Room.TIMEOUT = 3000;
     return Room;

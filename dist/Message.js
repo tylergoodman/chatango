@@ -8,35 +8,35 @@ var Message = (function () {
         return this.user.toString() + ": " + this.body;
     };
     Message.parse = function (raw) {
-        var ret = new Message;
+        var message = new Message;
         var _a = raw.match(Message.tokens.MESSAGE_PARSE), input = _a[0], nameColor = _a[1], fontSize = _a[2], textColor = _a[3], fontFamily = _a[4], body = _a[5];
         if (nameColor)
-            ret.style.nameColor = nameColor;
+            message.style.nameColor = nameColor;
         if (fontSize)
-            ret.style.fontSize = parseInt(fontSize, 10);
+            message.style.fontSize = parseInt(fontSize, 10);
         if (textColor)
-            ret.style.textColor = textColor;
+            message.style.textColor = textColor;
         if (fontFamily)
-            ret.style.fontFamily = parseInt(fontFamily, 10);
+            message.style.fontFamily = parseInt(fontFamily, 10);
         body = body.replace(/<br\/>/g, '\n');
         var format;
         while (format = body.match(Message.tokens.FORMAT)) {
             switch (format[1]) {
                 case 'b':
-                    ret.style.bold = true;
+                    message.style.bold = true;
                     break;
                 case 'i':
-                    ret.style.italics = true;
+                    message.style.italics = true;
                     break;
                 case 'u':
-                    ret.style.underline = true;
+                    message.style.underline = true;
                     break;
             }
             body = format[2];
         }
         body = _.unescape(body);
-        ret.body = body;
-        return ret;
+        message.body = body;
+        return message;
     };
     Message.tokens = {
         MESSAGE_PARSE: /^(?:<n(?:(?:\d{4})|((?:[a-fA-F0-9]{3}){1,2}))?\/>)?(?:<f x(\d{2})?((?:[a-fA-F0-9]{3}){1,2})?\=\"(\d+)?\">)?(.+)$/,
@@ -44,6 +44,10 @@ var Message = (function () {
     };
     return Message;
 })();
+Message.prototype.id = '';
+Message.prototype.created_at = 0;
+Message.prototype.body = '';
+Message.prototype.user = '';
 var Message;
 (function (Message) {
     var Style = (function () {
@@ -97,5 +101,32 @@ var Message;
         Font[Font["Typewriter"] = 8] = "Typewriter";
     })(Message.Font || (Message.Font = {}));
     var Font = Message.Font;
+    var Cache = (function () {
+        function Cache(options) {
+            this.size = 100;
+            this._pending = {};
+            this._cache = [];
+            this._dict = {};
+            _.extend(this, options);
+        }
+        Cache.prototype.get = function (id) {
+            return this._dict[id];
+        };
+        Cache.prototype.push = function (message) {
+            this._pending[message.id] = message;
+            this._cache.push(message);
+            var old = this._cache.shift();
+            delete this._dict[old.id];
+            return this;
+        };
+        Cache.prototype.publish = function (id, new_id) {
+            var message = this._pending[id];
+            message.id = new_id;
+            this._dict[new_id] = message;
+            return message;
+        };
+        return Cache;
+    })();
+    Message.Cache = Cache;
 })(Message || (Message = {}));
 module.exports = Message;
