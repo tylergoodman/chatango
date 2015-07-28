@@ -197,6 +197,7 @@ class Room extends events.EventEmitter {
     winston.log('verbose', `Joining room ${this.name}`);
     return this._connection
       .connect()
+      // join room
       .then(() => {
         return new Promise<void>((resolve, reject) => {
           this.once('_init', resolve);
@@ -204,6 +205,7 @@ class Room extends events.EventEmitter {
         })
         .timeout(Room.TIMEOUT);
       })
+      // authenticate to room
       .then(() => {
         if (this._anonymous)
           return;
@@ -221,6 +223,11 @@ class Room extends events.EventEmitter {
         .timeout(Room.TIMEOUT);
       })
       .then(() => {
+        // add ourselves to the user list
+        if (this.user instanceof User) {
+          this.users[(<User>this.user).name] = <User>this.user;
+        }
+        // ask for the rest of the users
         return new Promise<void>((resolve, reject) => {
           this.once('_userlist', resolve);
           this._send('gparticipants');
@@ -228,6 +235,7 @@ class Room extends events.EventEmitter {
         .timeout(Room.TIMEOUT);
       })
       .then(() => {
+        // make sure to initalize ourselves
         if (this.user instanceof User) {
           return (<User>this.user).init();
         }

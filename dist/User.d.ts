@@ -17,7 +17,7 @@ declare class User {
     constructor(name: string, password?: string);
     toString(): string;
     init(): Promise<void>;
-    authenticate(): Promise<void>;
+    authorize(): Promise<void>;
     getStyle(): Promise<Message.Style>;
     setStyle(style?: Message.Style): Promise<Message.Style>;
     getBackground(): Promise<Message.Background>;

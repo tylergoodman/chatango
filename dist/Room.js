@@ -198,6 +198,9 @@ var Room = (function (_super) {
                 .timeout(Room.TIMEOUT);
         })
             .then(function () {
+            if (_this.user instanceof User) {
+                _this.users[_this.user.name] = _this.user;
+            }
             return new Promise(function (resolve, reject) {
                 _this.once('_userlist', resolve);
                 _this._send('gparticipants');
@@ -346,12 +349,12 @@ var Room = (function (_super) {
             user = this.users[user_registered];
             if (user === void 0) {
                 user = new User(user_registered);
+                this.users[user_registered] = user;
                 winston.log('debug', "First time seeing registered user \"" + name + "\"");
             }
         }
         if (status === '1') {
             if (user instanceof User) {
-                this.users[user_registered] = user;
                 user.joined_at = user.joined_at || parseFloat(joined_at);
                 user.init();
             }

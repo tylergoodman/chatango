@@ -30,11 +30,11 @@ var User = (function () {
     User.prototype.init = function () {
         var _this = this;
         var promise;
-        if (this.password) {
-            promise = this.authenticate();
+        if (this.password === void 0) {
+            promise = Promise.resolve();
         }
         else {
-            promise = Promise.resolve();
+            promise = this.authorize();
         }
         return promise
             .then(function () {
@@ -48,11 +48,12 @@ var User = (function () {
         })
             .then(function (background) {
             _this.background = background;
+            winston.log('verbose', "Initialized user: \"" + _this.name + "\"");
         });
     };
-    User.prototype.authenticate = function () {
+    User.prototype.authorize = function () {
         var _this = this;
-        winston.log('debug', "Authenticating user \"" + this.name + "\"");
+        winston.log('debug', "Authorizing user \"" + this.name + "\"");
         return new Promise(function (resolve, reject) {
             request({
                 url: 'http://scripts.st.chatango.com/setcookies',
@@ -67,10 +68,10 @@ var User = (function () {
                 }
             }, function (error, response, body) {
                 if (error) {
-                    winston.log('error', "Error while authenticating user \"" + _this.name + "\": " + error);
+                    winston.log('error', "Error while authorizing user \"" + _this.name + "\": " + error);
                     return reject(error);
                 }
-                winston.log('info', "Authentication successful: \"" + _this.name + "\"");
+                winston.log('info', "Authorized user: \"" + _this.name + "\"");
                 resolve();
             });
         });

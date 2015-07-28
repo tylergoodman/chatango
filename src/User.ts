@@ -46,7 +46,7 @@ class User {
       promise = Promise.resolve();
     }
     else {
-      promise = this.authenticate();
+      promise = this.authorize();
     }
 
     return promise
@@ -61,11 +61,12 @@ class User {
       })
       .then((background) => {
         this.background = background;
+        winston.log('verbose', `Initialized user: "${this.name}"`);
       });
   }
 
-  authenticate(): Promise<void> {
-    winston.log('debug', `Authenticating user "${this.name}"`);
+  authorize(): Promise<void> {
+    winston.log('debug', `Authorizing user "${this.name}"`);
     return new Promise<void>((resolve, reject) => {
       request({
         url: 'http://scripts.st.chatango.com/setcookies',
@@ -80,10 +81,10 @@ class User {
         }
       }, (error, response, body) => {
         if (error) {
-          winston.log('error', `Error while authenticating user "${this.name}": ${error}`);
+          winston.log('error', `Error while authorizing user "${this.name}": ${error}`);
           return reject(error);
         }
-        winston.log('info', `Authentication successful: "${this.name}"`);
+        winston.log('info', `Authorized user: "${this.name}"`);
         resolve();
       });
 //      request({
