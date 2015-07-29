@@ -10,8 +10,10 @@ declare class User {
     joined_at: number;
     style: Message.Style;
     background: Message.Background;
-    _ips: util.Set<string>;
-    _ids: util.Set<string>;
+    _ids: {
+        [index: string]: User.ID;
+    };
+    _connection_ids: util.Set<string>;
     private _cookies;
     ENDPOINT: string;
     constructor(name: string, password?: string);
@@ -30,5 +32,11 @@ declare class User {
     static getBackground(username: string): Promise<Message.Background>;
     static getBackgroundImage(username: string): request.Request;
     static getAvatar(username: string): request.Request;
+}
+declare module User {
+    interface ID {
+        id: string;
+        ip: string;
+    }
 }
 export = User;

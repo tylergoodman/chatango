@@ -18,11 +18,10 @@ class User {
   style: Message.Style = new Message.Style;
   background: Message.Background = new Message.Background;
 
-  _ips: util.Set<string> = new util.Set<string>(); // (mod only) user ips
-  _ids: util.Set<string> = new util.Set<string>(); // (mod only) unique identifiers that this User was seen using, derived from their session id
+  _ids: {[index: string]: User.ID} = {}; // (mod only) unique identifier/IP pairs
+  _connection_ids: util.Set<string> = new util.Set<string>();
   // remove these later
   // _session_ids: util.Set<string> = new util.Set<string>();
-  // _connection_ids: util.Set<string> = new util.Set<string>();
 
   private _cookies: request.CookieJar = request.jar();
   get ENDPOINT(): string {
@@ -312,6 +311,13 @@ class User {
 
   static getAvatar(username: string): request.Request {
     return new User(username).getAvatar();
+  }
+}
+
+module User {
+  export interface ID {
+    id: string;
+    ip: string;
   }
 }
 

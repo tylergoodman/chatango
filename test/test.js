@@ -4,6 +4,7 @@ var fs = require('fs');
 var _ = require('lodash');
 var should = require('should');
 var faker = require('faker');
+var Promise = require('bluebird');
 
 require('winston').level = 'debug';
 
@@ -279,6 +280,33 @@ describe('Room', function () {
       test(new Room('ttttest'), done);
     });
   });
+
+  it('delete', function (done) {
+    var anon = new Room('ttttest');
+    var registered = new Room('ttttest', new User('ttttestuser', 'asdf1234'));
+    var message = faker.hacker.phrase();
+    registered.connect()
+      .then(function () {
+        return anon.connect();
+      })
+      .then(function () {
+        return new Promise(function (resolve, reject) {
+          registered.once('message', resolve);
+          anon.message(message);
+        }).timeout(2000);
+      })
+      .then(function (message) {
+        registered.delete(message);
+        return new Promise(function (resolve, reject) {
+          registered.once('message_delete', resolve);
+        });
+      })
+      .then(function (deleted_message) {
+        message.should.equal(deleted_message.body);
+        done();
+      })
+      .catch(done);
+  })
 });
 
 describe('top-level class creator functions', function () {

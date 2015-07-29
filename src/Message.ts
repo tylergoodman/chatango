@@ -8,6 +8,7 @@ import Room = require('./Room');
 class Message {
   id: string;
   user: string | User;
+  user_id: User.ID;
   created_at: number;
   body: string;
   style: Message.Style = new Message.Style;
@@ -195,19 +196,36 @@ module Message {
     push(message: Message): Cache {
       // add new message to pending
       this._pending[message.id] = message;
-      this._cache.push(message);
-
-      // remove front of cache
-      var old: Message = this._cache.shift();
-      delete this._dict[old.id];
 
       return this;
     }
 
     publish(id: string, new_id: string): Message {
+      // get pending message
       var message = this._pending[id];
+      // remove from pending
+      delete this._pending[id];
+      // assign new ID
       message.id = new_id;
+      // add to dictionary
       this._dict[new_id] = message;
+
+      // add to cache
+      this._cache.push(message);
+      // remove oldest
+      if (this._cache.length > this.size) {
+        var old = this._cache.shift();
+        delete this._dict[old.id];
+      }
+
+      return message;
+    }
+
+    remove(id: string): Message {
+      var message = this._dict[id];
+      delete this._dict[id];
+      this._cache.slice(this._cache.indexOf(message), 1);
+
       return message;
     }
   }

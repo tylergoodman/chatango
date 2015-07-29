@@ -270,6 +270,7 @@ class Room extends events.EventEmitter {
 
   /**
    * Send a message to the room
+   * 
    * @param content - the message content
    */
   message(content: string): Room {
@@ -307,6 +308,51 @@ class Room extends events.EventEmitter {
     return this;
   }
 
+  /**
+   * Delete a message
+   * 
+   * @param message - the message object or the message ID of the message to delete
+   */
+  delete(message: string | Message): Room {
+    var id: string;
+    if (message instanceof Message) {
+      id = (<Message>message).id;
+    }
+
+    this._send(['delmsg', id]);
+    return this;
+  }
+
+  /**
+   * Delete all messages from a user
+   * 
+   * @param user - the user whose messages to delete, or the message sent by an unregistered user
+   */
+  deleteAll(id: User | Message): Room {
+    if (id instanceof Message) {
+      var message = <Message>id;
+      if (typeof message.user === 'string') {
+        this._send(['delallmsg', message.user_id.id, message.user_id.ip]);
+        return this;
+      }
+      id = <User>message.user;
+    }
+    var user = <User>id;
+    var ids = _.values(user._ids);
+    for (var i = 0, len = ids.length; i < len; i++) {
+      this._send(['delallmsg', ids[i].id, ids[i].ip])
+    }
+    return this;
+  }
+
+  /**
+   * Ban a user
+   * 
+   * @param
+   */
+  ban(user: User): Room {
+    return this;
+  }
 
   /**
    * Room command handlers
@@ -428,7 +474,7 @@ class Room extends events.EventEmitter {
    */
   __command__u(old_id: string, new_id: string): void {
     var message = this._history.publish(old_id, new_id);
-    winston.log('info', `Received message in room "${this.name}": ${message.toString()}`);
+    winston.log('info', `Received message for room "${this.name}" as user "${this.user.toString()}":\n${message.toString()}`);
     this.emit('message', message);
   }
 
@@ -436,16 +482,20 @@ class Room extends events.EventEmitter {
    * 'mods' command
    * received in response to any mod-editing request made by any user (removemod, addmod, updmod)
    * @param modlist - semicolon-delineated list of moderators and their permissions
-   * @fires modUpdate
+   * @fires mod_update
    */
   __command__mods(modlist: string): void {
+    this.moderators.clear();
     var mods = modlist.split(';');
     for (var i = 0, len = mods.length; i < len; i++) {
-      var [name, permissions] = mods[i].split(',');
+      var [
+        name, // name of the moderator user
+        permissions // integer represnting the permissions of the moderator?
+      ] = mods[i].split(',');
       this.moderators.add(name);
     }
     winston.log('verbose', `Received moderator information for room "${this.name}"`);
-    this.emit('modUpdate');
+    this.emit('mod_update');
   }
 
   /**
@@ -463,7 +513,7 @@ class Room extends events.EventEmitter {
         break;
       }
       var [
-        id, // id unique to the connection
+        connection_id, // id unique to the connection
         joined_at, // unix join time
         session_id, // id unique to the first 8 digits of user's cookie-based session id
         name, // name of the registered user
@@ -477,6 +527,7 @@ class Room extends events.EventEmitter {
         user.init();
         winston.log('debug', `First time seeing registered user "${name}"`);
       }
+      user._connection_ids.add(connection_id);
       user.joined_at = parseFloat(joined_at);
     }
     winston.log('verbose', `Received registered user information for room "${this.name}"`);
@@ -487,7 +538,7 @@ class Room extends events.EventEmitter {
    * 'participant' command
    * received periodically as users join and leave after receiving the 'gparticipants' command
    * @param status - [0 = leave, 1 = join], whether the event is a join or a leave event
-   * @param id - the user's unique connection id
+   * @param connection_id - the user's unique connection id
    * @param session_id - the user's unique session id
    * @param user_registered - [name, 'None'] name of the message sender (if registered)
    * @param user_temporary - [name, 'None'] name of the message sender (if using a temporary name)
@@ -496,7 +547,8 @@ class Room extends events.EventEmitter {
    * @fires join
    * @fires leave
    */
-  __command__participant(status: string, id: string, session_id: string, user_registered: string, user_temporary: string, no_idea: string, joined_at: string): void {
+  __command__participant(status: string, connection_id: string, session_id: string, user_registered: string, user_temporary: string, no_idea: string, joined_at: string): void {
+    // get the user
     var user: string | User;
     if (user_registered === 'None' && user_temporary === 'None') {
       user = User.parseAnonName(`<n${session_id.slice(4, 8)}/>`, joined_at.slice(0, joined_at.indexOf('.')));
@@ -513,26 +565,35 @@ class Room extends events.EventEmitter {
         winston.log('debug', `First time seeing registered user "${name}"`);
       }
     }
+    // join
     if (status === '1') {
       if (user instanceof User) {
-        (<User>user).joined_at = (<User>user).joined_at || parseFloat(joined_at);
-        (<User>user).init();
+        (<User>user)._connection_ids.add(connection_id);
+        if ((<User>user)._connection_ids.length === 1) { // announce if the registered user is joining for the first time (ie. isn't already in the room)
+          (<User>user).joined_at = parseFloat(joined_at);
+          (<User>user).init();
+          winston.log('info', `Registered user "${(<User>user).name}" joined room "${this.name}"`);
+        }
+      }
+      else {
+        winston.log('info', `Temporary user "${user}" joined room "${this.name}"`);
       }
       this.emit('join', user);
     }
+    // leave
     else {
+      if (user instanceof User) {
+        (<User>user)._connection_ids.delete(connection_id);
+        if ((<User>user)._connection_ids.length === 0) { // announce if the registered user has completely left the room (ie. isn't in the room in another tab, etc..)
+          delete this.users[(<User>user).name];
+          winston.log('info', `Registered user "${(<User>user).name}" left room "${this.name}"`);
+        }
+      }
+      else {
+        winston.log('info', `Temporary user "${user}" left room "${this.name}"`);
+      }
       this.emit('leave', user);
     }
-  }
-
-  /**
-   * 'show_nlp' command
-   * received when we send a message that was rejected due to spam detection
-   * @fires flood_ban_warning
-   */
-  __command__show_nlp(): void {
-    winston.log('warn', `Could not send the following message to room "${this.name}" as user "${this.user.toString()}" due to spam detection:\n${this._last_message}`);
-    this.emit('flood_ban_warning');
   }
 
   /**
@@ -546,16 +607,83 @@ class Room extends events.EventEmitter {
   }
 
   /**
+   * 'show_nlp' command
+   * received when we send a message that was rejected due to spam detection (messages too similar to previous ones)
+   * @fires spam_ban_warning
+   */
+  __command__show_nlp(): void {
+    winston.log('warn', `Could not send the following message to room "${this.name}" as user "${this.user.toString()}" due to spam detection:\n"${this._last_message}"`);
+    this.emit('spam_ban_warning');
+  }
+
+  /**
    * 'nlptb' command
-   * received when we get flood banned
-   * @fires flood_ban
+   * received when we get spam banned
+   * @fires spam_ban
    */
   __command__nlptb(): void {
-    winston.log('warn', `Flood banned in room "${this.name}" as user "${this.user.toString()}"`);
+    winston.log('warn', `Spam banned in room "${this.name}" as user "${this.user.toString()}"`);
+    this.emit('spam_ban');
+  }
+
+  /**
+   * 'show_fw' command
+   * received when we send messages too quickly and are about to be flood banned
+   * @fires flood_ban_warning
+   */
+  __command__show_fw(): void {
+    winston.log('warn', `Flood ban warning in room "${this.name}" as user "${this.user.toString()}"`);
+    this.emit("flood_ban_warning")
+  }
+
+  /**
+   * 'show_tb' command
+   * received when we get flood banned
+   * @param seconds - time of flood ban in seconds
+   * @fires flood_ban
+   */
+  __command__show_tb(seconds: string): void {
+    winston.log('warn', `Flood banned in room "${this.name}" as user "${this.user.toString}"`);
     this.emit('flood_ban');
   }
 
+  /**
+   * 'tb' command
+   * received when we try to send a message while flood banned
+   * @param second_remaining - number of seconds left on our flood ban
+   * @fires flood_ban_timeout
+   */
+  __command__tb(seconds_remaining: string): void {
+    winston.log('warn', `Could not send the following message to room "${this.name}" as user "${this.user.toString()}" due to a flood ban. ${seconds_remaining} seconds remaining\n"${this._last_message}"`);
+    this.emit('flood_ban_timeout', parseInt(seconds_remaining, 10));
+  }
 
+  /**
+   * 'delete' command
+   * received when a message is deleted
+   * @param message_id - the ID of the deleted message
+   * @fires message_delete
+   */
+  __command__delete(message_id: string): void {
+    var message = this._history.remove(message_id);
+    winston.log('verbose', `The following message has been deleted in room "${this.name}:\n${message.toString()}"`);
+    this.emit('message_delete', message);
+  }
+
+  /**
+   * 'deleteall' command
+   * received when multiple messages are deleted
+   * @param ...message_ids - array of message IDs (colon-delineated, .split() above)
+   * @fires message_delete (multiple);
+   */
+  __command__deleteall(...message_ids: string[]): void {
+    for (var i = 0, len = message_ids.length; i < len; i++) {
+      var id = message_ids[i];
+      var message = this._history.remove(id);
+      winston.log('verbose', `The following message has been deleted in room "${this.name}:\n${message.toString()}"`);
+      this.emit('message_delete', message);
+    }
+  }
 
   /**
    * Helpers
@@ -580,14 +708,17 @@ class Room extends events.EventEmitter {
     // rejoin message parts
     var raw = raw_message.join(':');
     var user: string | User;
+    var id: User.ID = {
+      id: user_id,
+      ip: user_ip
+    };
     if (user_registered) {
       user_registered = user_registered.toLowerCase();
       user = this.users[user_registered];
       if (user === void 0) {
         user = new User(user_registered);
       }
-      (<User>user)._ips.add(user_ip);
-      (<User>user)._ids.add(user_id);
+      (<User>user)._ids[id.id + id.ip] = id; // wow such hash
     }
     else if (user_temporary) {
       user = user_temporary
@@ -597,6 +728,7 @@ class Room extends events.EventEmitter {
     }
     var message = Message.parse(raw);
     message.id = message_id;
+    message.user_id = id;
     message.room = this;
     message.user = user;
     message.created_at = parseFloat(created_at);
@@ -609,6 +741,7 @@ class Room extends events.EventEmitter {
 
   /**
    * Message event
+   * fired when the Room receives a message
    * 
    * @event Room#message
    * @param {Message} message - the message that was received
@@ -616,6 +749,7 @@ class Room extends events.EventEmitter {
 
   /**
    * Join event
+   * fired when a user (temporary and registered) joins the room
    * 
    * @event Room#join
    * @param {string | User} user - the user that joined
@@ -623,6 +757,7 @@ class Room extends events.EventEmitter {
 
   /**
    * Leave event
+   * fired when a user (temporary and registered) leaves the room
    * 
    * @event Room#leave
    * @param {string | User} user - the user that left
@@ -630,6 +765,7 @@ class Room extends events.EventEmitter {
 
   /**
    * Connect event
+   * fired when we join the room
    * 
    * @event Room#connect
    * @param Room room - this room
@@ -637,9 +773,24 @@ class Room extends events.EventEmitter {
 
   /**
    * Disconnect event
+   * fired when we leave the room
    * 
    * @event Room#disconnect
    * @param Room room - this room
+   */
+  
+  /**
+   * Spam Ban Warning event
+   * fired when we are warned for sending messages that are too similar too quickly
+   * 
+   * @event Room#spam_ban_warning
+   */
+  
+  /**
+   * Flood Ban event
+   * fired when we are flood banned
+   * 
+   * @event Room#flood_ban
    */
 }
 

@@ -2,6 +2,7 @@
 import events = require('events');
 import Promise = require('bluebird');
 import User = require('./User');
+import Message = require('./Message');
 import util = require('./util');
 declare class Room extends events.EventEmitter {
     name: string;
@@ -38,6 +39,9 @@ declare class Room extends events.EventEmitter {
     connect(): Promise<Room>;
     disconnect(): Promise<void>;
     message(content: string): Room;
+    delete(message: string | Message): Room;
+    deleteAll(id: User | Message): Room;
+    ban(user: User): Room;
     __command__ok(owner: string, session_id: string, session_status: string, username: string, server_time: string, ip: string, moderators: string, server_id: string): void;
     __command__i(): void;
     __command__nomore(): void;
@@ -49,10 +53,15 @@ declare class Room extends events.EventEmitter {
     __command__u(old_id: string, new_id: string): void;
     __command__mods(modlist: string): void;
     __command__gparticipants(num_unregistered: string, ...users: string[]): void;
-    __command__participant(status: string, id: string, session_id: string, user_registered: string, user_temporary: string, no_idea: string, joined_at: string): void;
-    __command__show_nlp(): void;
+    __command__participant(status: string, connection_id: string, session_id: string, user_registered: string, user_temporary: string, no_idea: string, joined_at: string): void;
     __command__badalias(): void;
+    __command__show_nlp(): void;
     __command__nlptb(): void;
+    __command__show_fw(): void;
+    __command__show_tb(seconds: string): void;
+    __command__tb(seconds_remaining: string): void;
+    __command__delete(message_id: string): void;
+    __command__deleteall(...message_ids: string[]): void;
     private _parseMessage(created_at, user_registered, user_temporary, user_session_id, user_id, message_id, user_ip, no_idea, no_idea2, ...raw_message);
 }
 declare module Room {

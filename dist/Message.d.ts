@@ -4,6 +4,7 @@ import Room = require('./Room');
 declare class Message {
     id: string;
     user: string | User;
+    user_id: User.ID;
     created_at: number;
     body: string;
     style: Message.Style;
@@ -74,6 +75,7 @@ declare module Message {
         get(id: string): Message;
         push(message: Message): Cache;
         publish(id: string, new_id: string): Message;
+        remove(id: string): Message;
     }
     module Cache {
         interface Options {

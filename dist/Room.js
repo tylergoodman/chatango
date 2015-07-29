@@ -258,6 +258,33 @@ var Room = (function (_super) {
         this._send(['bm', Math.round(15e5 * Math.random()).toString(36), '0', message]);
         return this;
     };
+    Room.prototype.delete = function (message) {
+        var id;
+        if (message instanceof Message) {
+            id = message.id;
+        }
+        this._send(['delmsg', id]);
+        return this;
+    };
+    Room.prototype.deleteAll = function (id) {
+        if (id instanceof Message) {
+            var message = id;
+            if (typeof message.user === 'string') {
+                this._send(['delallmsg', message.user_id.id, message.user_id.ip]);
+                return this;
+            }
+            id = message.user;
+        }
+        var user = id;
+        var ids = _.values(user._ids);
+        for (var i = 0, len = ids.length; i < len; i++) {
+            this._send(['delallmsg', ids[i].id, ids[i].ip]);
+        }
+        return this;
+    };
+    Room.prototype.ban = function (user) {
+        return this;
+    };
     Room.prototype.__command__ok = function (owner, session_id, session_status, username, server_time, ip, moderators, server_id) {
         this.owner = owner;
         this.session_id = session_id;
@@ -299,17 +326,18 @@ var Room = (function (_super) {
     };
     Room.prototype.__command__u = function (old_id, new_id) {
         var message = this._history.publish(old_id, new_id);
-        winston.log('info', "Received message in room \"" + this.name + "\": " + message.toString());
+        winston.log('info', "Received message for room \"" + this.name + "\" as user \"" + this.user.toString() + "\":\n" + message.toString());
         this.emit('message', message);
     };
     Room.prototype.__command__mods = function (modlist) {
+        this.moderators.clear();
         var mods = modlist.split(';');
         for (var i = 0, len = mods.length; i < len; i++) {
             var _a = mods[i].split(','), name = _a[0], permissions = _a[1];
             this.moderators.add(name);
         }
         winston.log('verbose', "Received moderator information for room \"" + this.name + "\"");
-        this.emit('modUpdate');
+        this.emit('mod_update');
     };
     Room.prototype.__command__gparticipants = function (num_unregistered) {
         var users = [];
@@ -322,7 +350,7 @@ var Room = (function (_super) {
             if (user_string === '') {
                 break;
             }
-            var _a = user_string.split(':'), id = _a[0], joined_at = _a[1], session_id = _a[2], name = _a[3], None = _a[4];
+            var _a = user_string.split(':'), connection_id = _a[0], joined_at = _a[1], session_id = _a[2], name = _a[3], None = _a[4];
             name = name.toLowerCase();
             var user = this.users[name];
             if (user === void 0) {
@@ -331,12 +359,13 @@ var Room = (function (_super) {
                 user.init();
                 winston.log('debug', "First time seeing registered user \"" + name + "\"");
             }
+            user._connection_ids.add(connection_id);
             user.joined_at = parseFloat(joined_at);
         }
         winston.log('verbose', "Received registered user information for room \"" + this.name + "\"");
         this.emit('_userlist');
     };
-    Room.prototype.__command__participant = function (status, id, session_id, user_registered, user_temporary, no_idea, joined_at) {
+    Room.prototype.__command__participant = function (status, connection_id, session_id, user_registered, user_temporary, no_idea, joined_at) {
         var user;
         if (user_registered === 'None' && user_temporary === 'None') {
             user = User.parseAnonName("<n" + session_id.slice(4, 8) + "/>", joined_at.slice(0, joined_at.indexOf('.')));
@@ -355,25 +384,71 @@ var Room = (function (_super) {
         }
         if (status === '1') {
             if (user instanceof User) {
-                user.joined_at = user.joined_at || parseFloat(joined_at);
-                user.init();
+                user._connection_ids.add(connection_id);
+                if (user._connection_ids.length === 1) {
+                    user.joined_at = parseFloat(joined_at);
+                    user.init();
+                    winston.log('info', "Registered user \"" + user.name + "\" joined room \"" + this.name + "\"");
+                }
+            }
+            else {
+                winston.log('info', "Temporary user \"" + user + "\" joined room \"" + this.name + "\"");
             }
             this.emit('join', user);
         }
         else {
+            if (user instanceof User) {
+                user._connection_ids.delete(connection_id);
+                if (user._connection_ids.length === 0) {
+                    delete this.users[user.name];
+                    winston.log('info', "Registered user \"" + user.name + "\" left room \"" + this.name + "\"");
+                }
+            }
+            else {
+                winston.log('info', "Temporary user \"" + user + "\" left room \"" + this.name + "\"");
+            }
             this.emit('leave', user);
         }
-    };
-    Room.prototype.__command__show_nlp = function () {
-        winston.log('warn', "Could not send the following message to room \"" + this.name + "\" as user \"" + this.user.toString() + "\" due to spam detection:\n" + this._last_message);
-        this.emit('flood_ban_warning');
     };
     Room.prototype.__command__badalias = function () {
         this.emit('error', new Error("Username \"" + this.user.toString() + "\" is invalid or already in use"));
     };
+    Room.prototype.__command__show_nlp = function () {
+        winston.log('warn', "Could not send the following message to room \"" + this.name + "\" as user \"" + this.user.toString() + "\" due to spam detection:\n\"" + this._last_message + "\"");
+        this.emit('spam_ban_warning');
+    };
     Room.prototype.__command__nlptb = function () {
-        winston.log('warn', "Flood banned in room \"" + this.name + "\" as user \"" + this.user.toString() + "\"");
+        winston.log('warn', "Spam banned in room \"" + this.name + "\" as user \"" + this.user.toString() + "\"");
+        this.emit('spam_ban');
+    };
+    Room.prototype.__command__show_fw = function () {
+        winston.log('warn', "Flood ban warning in room \"" + this.name + "\" as user \"" + this.user.toString() + "\"");
+        this.emit("flood_ban_warning");
+    };
+    Room.prototype.__command__show_tb = function (seconds) {
+        winston.log('warn', "Flood banned in room \"" + this.name + "\" as user \"" + this.user.toString + "\"");
         this.emit('flood_ban');
+    };
+    Room.prototype.__command__tb = function (seconds_remaining) {
+        winston.log('warn', "Could not send the following message to room \"" + this.name + "\" as user \"" + this.user.toString() + "\" due to a flood ban. " + seconds_remaining + " seconds remaining\n\"" + this._last_message + "\"");
+        this.emit('flood_ban_timeout', parseInt(seconds_remaining, 10));
+    };
+    Room.prototype.__command__delete = function (message_id) {
+        var message = this._history.remove(message_id);
+        winston.log('verbose', "The following message has been deleted in room \"" + this.name + ":\n" + message.toString() + "\"");
+        this.emit('message_delete', message);
+    };
+    Room.prototype.__command__deleteall = function () {
+        var message_ids = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            message_ids[_i - 0] = arguments[_i];
+        }
+        for (var i = 0, len = message_ids.length; i < len; i++) {
+            var id = message_ids[i];
+            var message = this._history.remove(id);
+            winston.log('verbose', "The following message has been deleted in room \"" + this.name + ":\n" + message.toString() + "\"");
+            this.emit('message_delete', message);
+        }
     };
     Room.prototype._parseMessage = function (created_at, user_registered, user_temporary, user_session_id, user_id, message_id, user_ip, no_idea, no_idea2) {
         var raw_message = [];
@@ -382,14 +457,17 @@ var Room = (function (_super) {
         }
         var raw = raw_message.join(':');
         var user;
+        var id = {
+            id: user_id,
+            ip: user_ip
+        };
         if (user_registered) {
             user_registered = user_registered.toLowerCase();
             user = this.users[user_registered];
             if (user === void 0) {
                 user = new User(user_registered);
             }
-            user._ips.add(user_ip);
-            user._ids.add(user_id);
+            user._ids[id.id + id.ip] = id;
         }
         else if (user_temporary) {
             user = user_temporary;
@@ -399,6 +477,7 @@ var Room = (function (_super) {
         }
         var message = Message.parse(raw);
         message.id = message_id;
+        message.user_id = id;
         message.room = this;
         message.user = user;
         message.created_at = parseFloat(created_at);

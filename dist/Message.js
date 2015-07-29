@@ -114,15 +114,24 @@ var Message;
         };
         Cache.prototype.push = function (message) {
             this._pending[message.id] = message;
-            this._cache.push(message);
-            var old = this._cache.shift();
-            delete this._dict[old.id];
             return this;
         };
         Cache.prototype.publish = function (id, new_id) {
             var message = this._pending[id];
+            delete this._pending[id];
             message.id = new_id;
             this._dict[new_id] = message;
+            this._cache.push(message);
+            if (this._cache.length > this.size) {
+                var old = this._cache.shift();
+                delete this._dict[old.id];
+            }
+            return message;
+        };
+        Cache.prototype.remove = function (id) {
+            var message = this._dict[id];
+            delete this._dict[id];
+            this._cache.slice(this._cache.indexOf(message), 1);
             return message;
         };
         return Cache;
