@@ -3,16 +3,16 @@ exports.Connection = require('./Connection');
 exports.Message = require('./Message');
 exports.Room = require('./Room');
 exports.User = require('./User');
-function joinRoom(room, username, password) {
+function joinRoom(roomname, username, password) {
     var ret;
     if (username && password) {
-        ret = new exports.Room(room, new exports.User(username, password));
+        ret = new exports.Room(roomname, new exports.User(username, password));
     }
     else if (username) {
-        ret = new exports.Room(room, username);
+        ret = new exports.Room(roomname, username);
     }
     else {
-        ret = new exports.Room(room, '');
+        ret = new exports.Room(roomname, '');
     }
     ret.connect();
     return ret;

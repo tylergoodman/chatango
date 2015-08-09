@@ -1,6 +1,6 @@
 var Set = (function () {
     function Set(initial) {
-        this.elements = [];
+        this._elements = [];
         if (initial !== void 0) {
             for (var i = 0, len = initial.length; i < len; i++) {
                 this.add(initial[i]);
@@ -9,7 +9,7 @@ var Set = (function () {
     }
     Object.defineProperty(Set.prototype, "length", {
         get: function () {
-            return this.elements.length;
+            return this._elements.length;
         },
         enumerable: true,
         configurable: true
@@ -19,26 +19,26 @@ var Set = (function () {
             return this;
         }
         if (!this.has(element)) {
-            this.elements.push(element);
+            this._elements.push(element);
         }
         return this;
     };
     Set.prototype.clear = function () {
-        this.elements.length = 0;
+        this._elements.length = 0;
     };
     Set.prototype.delete = function (element) {
-        var index = this.elements.indexOf(element);
+        var index = this._elements.indexOf(element);
         if (index === -1) {
             return false;
         }
-        this.elements.splice(index, 1);
+        this._elements.splice(index, 1);
         return true;
     };
     Set.prototype.has = function (element) {
-        return this.elements.indexOf(element) !== -1;
+        return this._elements.indexOf(element) !== -1;
     };
     Set.prototype.toString = function () {
-        return this.elements.toString();
+        return this._elements.toString();
     };
     return Set;
 })();

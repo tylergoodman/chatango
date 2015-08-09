@@ -1,10 +1,11 @@
 /// <reference path="../typings/tsd.d.ts" />
+import events = require('events');
 import fs = require('fs');
 import request = require('request');
 import Promise = require('bluebird');
 import Message = require('./Message');
 import util = require('./util');
-declare class User {
+declare class User extends events.EventEmitter {
     name: string;
     password: string;
     joined_at: number;
@@ -35,6 +36,7 @@ declare class User {
 }
 declare module User {
     interface ID {
+        name?: string;
         id: string;
         ip: string;
     }

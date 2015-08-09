@@ -34,11 +34,11 @@ var Room = (function (_super) {
         this._underline = false;
         this.name = name;
         this.user = user;
-        if (typeof this.user === 'string' && this.user === '') {
+        if (_.isString(this.user) && this.user === '') {
             this._anonymous = true;
         }
         this._history = new Message.Cache({
-            size: options && options.cache_size || 100
+            size: options && options.cache_size || void 0,
         });
         this._connection = new Connection(this._getServer());
         this._connection.on('data', this._receiveData.bind(this));
@@ -133,7 +133,9 @@ var Room = (function (_super) {
             if (handler === void 0) {
                 winston.log('warn', "Received command that has no handler from room \"" + this.name + "\": <" + command + ">: " + args);
             }
-            handler.apply(this, args);
+            else {
+                handler.apply(this, args);
+            }
         }
     };
     Room.prototype._getServer = function (room_name) {
@@ -182,20 +184,20 @@ var Room = (function (_super) {
                 _this.once('_init', resolve);
                 _this._send("bauth:" + _this.name + ":" + _this.session_id + "::");
             })
-                .timeout(Room.TIMEOUT);
+                .timeout(Room.TIMEOUT, "timed out while waiting for init command from room \"" + _this.name + "\" as user \"" + _this.user.toString() + "\"");
         })
             .then(function () {
             if (_this._anonymous)
                 return;
             return new Promise(function (resolve, reject) {
                 _this.once('_auth', resolve);
-                if (typeof _this.user === 'string')
+                if (_.isString(_this.user))
                     return _this._send("blogin:" + _this.user);
                 if (_this.user instanceof User)
                     return _this._send("blogin:" + _this.user.name + ":" + _this.user.password);
                 throw new Error("Cannot join room as user \"" + _this.user + "\"");
             })
-                .timeout(Room.TIMEOUT);
+                .timeout(Room.TIMEOUT, "timed out while waiting for auth command from room \"" + _this.name + "\" as user \"" + _this.user.toString() + "\"");
         })
             .then(function () {
             if (_this.user instanceof User) {
@@ -205,7 +207,7 @@ var Room = (function (_super) {
                 _this.once('_userlist', resolve);
                 _this._send('gparticipants');
             })
-                .timeout(Room.TIMEOUT);
+                .timeout(Room.TIMEOUT, "timed out while waiting for userlist from room \"" + _this.name + "\" as user \"" + _this.user.toString() + "\"");
         })
             .then(function () {
             if (_this.user instanceof User) {
@@ -218,18 +220,18 @@ var Room = (function (_super) {
             }
         })
             .then(function () {
-            winston.log('info', "Joined room " + _this.name);
+            winston.log('info', "Joined room \"" + _this.name + "\" as user \"" + _this.user.toString() + "\"");
             _this.emit('connect', _this);
             return _this;
         })
-            .timeout(Room.TIMEOUT);
+            .timeout(Room.TIMEOUT, "timed out while connecting to room \"" + this.name + "\" as user \"" + this.user.toString() + "\"");
     };
     Room.prototype.disconnect = function () {
         var _this = this;
-        winston.log('verbose', "Leaving room " + this.name);
+        winston.log('verbose', "Leaving room \"" + this.name + "\" as user \"" + this.user.toString() + "\"");
         return this._connection.disconnect()
             .then(function () {
-            winston.log('info', "Left room " + _this.name);
+            winston.log('info', "Left room \"" + _this.name + "\" as user \"" + _this.user.toString() + "\"");
             _this._reset();
             _this.emit('disconnect');
         });
@@ -249,7 +251,7 @@ var Room = (function (_super) {
             var _a = this.user.style, nameColor = _a.nameColor, fontSize = _a.fontSize, textColor = _a.textColor, fontFamily = _a.fontFamily;
             message = "<n" + nameColor + "/><f x" + fontSize + textColor + "=\"" + fontFamily + "\">" + content;
         }
-        else if (typeof this.user === 'string' && !this._anonymous) {
+        else if (_.isString(this.user) && !this._anonymous) {
             message = "" + content;
         }
         else {
@@ -269,7 +271,7 @@ var Room = (function (_super) {
     Room.prototype.deleteAll = function (id) {
         if (id instanceof Message) {
             var message = id;
-            if (typeof message.user === 'string') {
+            if (_.isString(message.user)) {
                 this._send(['delallmsg', message.user_id.id, message.user_id.ip]);
                 return this;
             }
@@ -278,11 +280,30 @@ var Room = (function (_super) {
         var user = id;
         var ids = _.values(user._ids);
         for (var i = 0, len = ids.length; i < len; i++) {
-            this._send(['delallmsg', ids[i].id, ids[i].ip]);
+            this._send(['delallmsg', ids[i].id, ids[i].ip, user.name]);
         }
         return this;
     };
     Room.prototype.ban = function (user) {
+        var id;
+        if (user instanceof Message) {
+            id = user.user_id;
+        }
+        else {
+            id = user;
+        }
+        this._send(['block', id.id, id.ip, id.name]);
+        return this;
+    };
+    Room.prototype.unban = function (user) {
+        var id;
+        if (user instanceof Message) {
+            id = user.user_id;
+        }
+        else {
+            id = user;
+        }
+        this._send(['removeblock', id.id, id.ip]);
         return this;
     };
     Room.prototype.__command__ok = function (owner, session_id, session_status, username, server_time, ip, moderators, server_id) {
@@ -298,7 +319,7 @@ var Room = (function (_super) {
                 this.moderators.add(name);
             }
         }
-        if (typeof this.user === 'string' && this.user.length === 0) {
+        if (this._anonymous) {
             this.user = User.parseAnonName("<n" + session_id.slice(4, 8) + "/>", (this.server_time | 0).toString());
         }
     };
@@ -321,13 +342,26 @@ var Room = (function (_super) {
         this.here_now = parseInt(num_users, 16);
     };
     Room.prototype.__command__b = function () {
-        var message = this._parseMessage.apply(this, arguments);
-        this._history.push(message);
+        var message = this._history.submit(this._parseMessage.apply(this, arguments));
+        if (message) {
+            winston.log('verbose', "Received message for room \"" + this.name + "\" as user \"" + this.user.toString() + "\":");
+            winston.log('info', "" + message.toString());
+            this.emit('message', message);
+            if (message.user instanceof User) {
+                message.user.emit('message', message);
+            }
+        }
     };
     Room.prototype.__command__u = function (old_id, new_id) {
         var message = this._history.publish(old_id, new_id);
-        winston.log('info', "Received message for room \"" + this.name + "\" as user \"" + this.user.toString() + "\":\n" + message.toString());
-        this.emit('message', message);
+        if (message) {
+            winston.log('verbose', "Received message for room \"" + this.name + "\" as user \"" + this.user.toString() + "\":");
+            winston.log('info', "" + message.toString());
+            this.emit('message', message);
+            if (message.user instanceof User) {
+                message.user.emit('message', message);
+            }
+        }
     };
     Room.prototype.__command__mods = function (modlist) {
         this.moderators.clear();
@@ -379,7 +413,7 @@ var Room = (function (_super) {
             if (user === void 0) {
                 user = new User(user_registered);
                 this.users[user_registered] = user;
-                winston.log('debug', "First time seeing registered user \"" + name + "\"");
+                winston.log('debug', "First time seeing registered user \"" + user.name + "\"");
             }
         }
         if (status === '1') {
@@ -399,6 +433,7 @@ var Room = (function (_super) {
         else {
             if (user instanceof User) {
                 user._connection_ids.delete(connection_id);
+                delete user._ids[session_id];
                 if (user._connection_ids.length === 0) {
                     delete this.users[user.name];
                     winston.log('info', "Registered user \"" + user.name + "\" left room \"" + this.name + "\"");
@@ -433,10 +468,19 @@ var Room = (function (_super) {
         winston.log('warn', "Could not send the following message to room \"" + this.name + "\" as user \"" + this.user.toString() + "\" due to a flood ban. " + seconds_remaining + " seconds remaining\n\"" + this._last_message + "\"");
         this.emit('flood_ban_timeout', parseInt(seconds_remaining, 10));
     };
+    Room.prototype.__command__climited = function (server_time) {
+        var request = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            request[_i - 1] = arguments[_i];
+        }
+        winston.log('warn', "The following command was ignored due to flood detection: \"" + request.join('') + "\"");
+    };
     Room.prototype.__command__delete = function (message_id) {
         var message = this._history.remove(message_id);
-        winston.log('verbose', "The following message has been deleted in room \"" + this.name + ":\n" + message.toString() + "\"");
-        this.emit('message_delete', message);
+        if (message !== void 0) {
+            winston.log('verbose', "The following message has been deleted in room \"" + this.name + ":\n" + message.toString() + "\"");
+            this.emit('message_delete', message);
+        }
     };
     Room.prototype.__command__deleteall = function () {
         var message_ids = [];
@@ -446,9 +490,15 @@ var Room = (function (_super) {
         for (var i = 0, len = message_ids.length; i < len; i++) {
             var id = message_ids[i];
             var message = this._history.remove(id);
-            winston.log('verbose', "The following message has been deleted in room \"" + this.name + ":\n" + message.toString() + "\"");
-            this.emit('message_delete', message);
+            if (message !== void 0) {
+                winston.log('verbose', "The following message has been deleted in room \"" + this.name + ":\n" + message.toString() + "\"");
+                this.emit('message_delete', message);
+            }
         }
+    };
+    Room.prototype.__command__blocked = function (id, ip, name, server_time) {
+        winston.log('info', "User \"" + (name || 'anonymous') + "\" using IP \"" + ip + "\" banned from room \"" + this.name + "\"");
+        this.emit('ban', { id: id, ip: ip, name: name, server_time: server_time });
     };
     Room.prototype._parseMessage = function (created_at, user_registered, user_temporary, user_session_id, user_id, message_id, user_ip, no_idea, no_idea2) {
         var raw_message = [];
@@ -457,17 +507,16 @@ var Room = (function (_super) {
         }
         var raw = raw_message.join(':');
         var user;
-        var id = {
-            id: user_id,
-            ip: user_ip
-        };
         if (user_registered) {
             user_registered = user_registered.toLowerCase();
             user = this.users[user_registered];
             if (user === void 0) {
                 user = new User(user_registered);
             }
-            user._ids[id.id + id.ip] = id;
+            user._ids[user_session_id] = {
+                id: user_id,
+                ip: user_ip,
+            };
         }
         else if (user_temporary) {
             user = user_temporary;
@@ -477,7 +526,11 @@ var Room = (function (_super) {
         }
         var message = Message.parse(raw);
         message.id = message_id;
-        message.user_id = id;
+        message.user_id = {
+            name: user.toString(),
+            id: user_id,
+            ip: user_ip,
+        };
         message.room = this;
         message.user = user;
         message.created_at = parseFloat(created_at);

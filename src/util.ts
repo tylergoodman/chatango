@@ -1,8 +1,8 @@
 // until node versions with native Set are in the majority...
 export class Set<T> {
-  elements: T[] = [];
+  private _elements: T[] = [];
   get length(): number {
-    return this.elements.length;
+    return this._elements.length;
   }
 
   constructor(initial?: T[]) {
@@ -19,29 +19,29 @@ export class Set<T> {
       return this;
     }
     if (!this.has(element)) {
-      this.elements.push(element);
+      this._elements.push(element);
     }
     return this;
   }
 
   clear(): void {
-    this.elements.length = 0;
+    this._elements.length = 0;
   }
 
   delete(element: T): boolean {
-    var index: number = this.elements.indexOf(element);
+    var index: number = this._elements.indexOf(element);
     if (index === -1) {
       return false;
     }
-    this.elements.splice(index, 1);
+    this._elements.splice(index, 1);
     return true;
   }
 
   has(element: T): boolean {
-    return this.elements.indexOf(element) !== -1;
+    return this._elements.indexOf(element) !== -1;
   }
 
   toString(): string {
-    return this.elements.toString();
+    return this._elements.toString();
   }
 }

@@ -1,4 +1,10 @@
 /// <reference path="../typings/tsd.d.ts" />
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var events = require('events');
 var request = require('request');
 var xml2js = require('xml2js');
 var Promise = require('bluebird');
@@ -6,8 +12,10 @@ var winston = require('winston');
 var _ = require('lodash');
 var Message = require('./Message');
 var util = require('./util');
-var User = (function () {
+var User = (function (_super) {
+    __extends(User, _super);
     function User(name, password) {
+        _super.call(this);
         this.joined_at = 0;
         this.style = new Message.Style;
         this.background = new Message.Background;
@@ -262,5 +270,5 @@ var User = (function () {
         return new User(username).getAvatar();
     };
     return User;
-})();
+})(events.EventEmitter);
 module.exports = User;

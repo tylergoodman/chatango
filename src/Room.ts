@@ -10,6 +10,77 @@ import Connection = require('./Connection');
 import Message = require('./Message');
 import util = require('./util');
 
+/**
+ * Room class
+ * manages all chatroom-related tasks
+ */
+
+/**
+ * Events
+ */
+
+/**
+ * Message event
+ * fired when the Room receives a message
+ * 
+ * @event Room#message
+ * @param {Message} message - the message that was received
+ */
+
+/**
+ * Join event
+ * fired when a user (temporary and registered) joins the room
+ * 
+ * @event Room#join
+ * @param {string | User} user - the user that joined
+ */
+
+/**
+ * Leave event
+ * fired when a user (temporary and registered) leaves the room
+ * 
+ * @event Room#leave
+ * @param {string | User} user - the user that left
+ */
+
+/**
+ * Connect event
+ * fired when we join the room
+ * 
+ * @event Room#connect
+ * @param Room room - this room
+ */
+
+/**
+ * Disconnect event
+ * fired when we leave the room
+ * 
+ * @event Room#disconnect
+ * @param Room room - this room
+ */
+
+/**
+ * Spam Ban Warning event
+ * fired when we are warned for sending messages that are too similar too quickly
+ * 
+ * @event Room#spam_ban_warning
+ */
+
+/**
+ * Flood Ban event
+ * fired when we are flood banned
+ * 
+ * @event Room#flood_ban
+ */
+
+/**
+ * Ban event
+ * fired when someone in the room is banned
+ * received only as moderator
+ * 
+ * @event Room#ban
+ */
+
 class Room extends events.EventEmitter {
   name: string;
   user: string | User;
@@ -38,12 +109,12 @@ class Room extends events.EventEmitter {
     this.name = name;
     this.user = user;
 
-    if (typeof this.user === 'string' && this.user === '') {
+    if (_.isString(this.user) && this.user === '') {
       this._anonymous = true;
     }
 
     this._history = new Message.Cache({
-      size: options && options.cache_size || 100
+      size: options && options.cache_size || void 0,
     });
 
     this._connection = new Connection(this._getServer());
@@ -105,11 +176,14 @@ class Room extends events.EventEmitter {
     return this;
   }
 
-  private _send(command: string): Room;
-  private _send(command: string[]): Room;
-  private _send(command: any): Room {
+  /**
+   * Send a command to a room
+   * 
+   * @param command - command with comma-delineated arguments, or an array of the command followed by its arguments
+   */
+  private _send(command: string | string[]): Room {
     if (_.isArray(command)) {
-      command = command.join(':');
+      command = (<string[]>command).join(':');
     }
     winston.log('debug', `Sending request to room "${this.name}": "${command}"`);
     if (!this._first_send) {
@@ -117,10 +191,13 @@ class Room extends events.EventEmitter {
     }
     this._first_send = false;
     command += '\0';
-    this._connection.send(command);
+    this._connection.send(<string>command);
     return this;
   }
 
+  /**
+   * Commands delegator
+   */
   private _receiveData(data: string): void {
     this._buffer += data;
     var commands: string[] = this._buffer.split('\0');
@@ -139,10 +216,16 @@ class Room extends events.EventEmitter {
       if (handler === void 0) {
         winston.log('warn', `Received command that has no handler from room "${this.name}": <${command}>: ${args}`);
       }
-      handler.apply(this, args);
+      else {
+        handler.apply(this, args);
+      }
     }
   }
 
+  /**
+   * Get chatango server hostname from room name
+   * taken from ch.py - https://github.com/Nullspeaker/ch.py
+   */
   private _getServer(room_name: string = this.name): string {
     // magic
     var tsweights: [string, number][] = [
@@ -203,7 +286,7 @@ class Room extends events.EventEmitter {
           this.once('_init', resolve);
           this._send(`bauth:${this.name}:${this.session_id}::`);
         })
-        .timeout(Room.TIMEOUT);
+        .timeout(Room.TIMEOUT, `timed out while waiting for init command from room "${this.name}" as user "${this.user.toString()}"`);
       })
       // authenticate to room
       .then(() => {
@@ -212,7 +295,7 @@ class Room extends events.EventEmitter {
 
         return new Promise<void>((resolve, reject) => {
           this.once('_auth', resolve);
-          if (typeof this.user === 'string')
+          if (_.isString(this.user))
             return this._send(`blogin:${this.user}`);
 
           if (this.user instanceof User)
@@ -220,7 +303,7 @@ class Room extends events.EventEmitter {
 
           throw new Error(`Cannot join room as user "${this.user}"`);
         })
-        .timeout(Room.TIMEOUT);
+        .timeout(Room.TIMEOUT, `timed out while waiting for auth command from room "${this.name}" as user "${this.user.toString()}"`);
       })
       .then(() => {
         // add ourselves to the user list
@@ -232,7 +315,7 @@ class Room extends events.EventEmitter {
           this.once('_userlist', resolve);
           this._send('gparticipants');
         })
-        .timeout(Room.TIMEOUT);
+        .timeout(Room.TIMEOUT, `timed out while waiting for userlist from room "${this.name}" as user "${this.user.toString()}"`);
       })
       .then(() => {
         // make sure to initalize ourselves
@@ -246,11 +329,11 @@ class Room extends events.EventEmitter {
         }
       })
       .then(() => {
-        winston.log('info', `Joined room ${this.name}`);
+        winston.log('info', `Joined room "${this.name}" as user "${this.user.toString()}"`);
         this.emit('connect', this);
         return this;
       })
-      .timeout(Room.TIMEOUT);
+      .timeout(Room.TIMEOUT, `timed out while connecting to room "${this.name}" as user "${this.user.toString()}"`);
   }
 
   /**
@@ -259,10 +342,10 @@ class Room extends events.EventEmitter {
    * @fires disconnect
    */
   disconnect(): Promise<void> {
-    winston.log('verbose', `Leaving room ${this.name}`);
+    winston.log('verbose', `Leaving room "${this.name}" as user "${this.user.toString()}"`);
     return this._connection.disconnect()
       .then(() => {
-        winston.log('info', `Left room ${this.name}`);
+        winston.log('info', `Left room "${this.name}" as user "${this.user.toString()}"`);
         this._reset();
         this.emit('disconnect');
       });
@@ -297,7 +380,7 @@ class Room extends events.EventEmitter {
       } = (<User>this.user).style;
       message = `<n${nameColor}/><f x${fontSize}${textColor}="${fontFamily}">${content}`;
     }
-    else if (typeof this.user === 'string' && !this._anonymous) {
+    else if (_.isString(this.user) && !this._anonymous) {
       message = `${content}`;
     }
     else {
@@ -331,7 +414,7 @@ class Room extends events.EventEmitter {
   deleteAll(id: User | Message): Room {
     if (id instanceof Message) {
       var message = <Message>id;
-      if (typeof message.user === 'string') {
+      if (_.isString(message.user)) {
         this._send(['delallmsg', message.user_id.id, message.user_id.ip]);
         return this;
       }
@@ -340,7 +423,7 @@ class Room extends events.EventEmitter {
     var user = <User>id;
     var ids = _.values(user._ids);
     for (var i = 0, len = ids.length; i < len; i++) {
-      this._send(['delallmsg', ids[i].id, ids[i].ip])
+      this._send(['delallmsg', ids[i].id, ids[i].ip, user.name]);
     }
     return this;
   }
@@ -350,7 +433,30 @@ class Room extends events.EventEmitter {
    * 
    * @param
    */
-  ban(user: User): Room {
+  ban(user: Message | User.ID): Room {
+    var id: User.ID;
+    if (user instanceof Message) {
+      id = user.user_id;
+    }
+    else {
+      id = <User.ID>user;
+    }
+    this._send(['block', id.id, id.ip, id.name]);
+    return this;
+  }
+
+  /**
+   * Unban a user
+   */
+  unban(user: Message | User.ID): Room {
+    var id: User.ID;
+    if (user instanceof Message) {
+      id = user.user_id;
+    }
+    else {
+      id = <User.ID>user;
+    }
+    this._send(['removeblock', id.id, id.ip]);
     return this;
   }
 
@@ -387,7 +493,7 @@ class Room extends events.EventEmitter {
       }
     }
     // we get our name here if we're connecting anonymously
-    if (typeof this.user === 'string' && (<string>this.user).length === 0) {
+    if (this._anonymous) {
       this.user = User.parseAnonName(`<n${session_id.slice(4, 8)}/>`, (this.server_time | 0).toString());
     }
   }
@@ -447,7 +553,7 @@ class Room extends events.EventEmitter {
 
   /**
    * 'n' command
-   * received periodically
+   * received whenever a user join or leaves
    * @param num_users - number of the users in the room, in hexidecimal
    */
   __command__n(num_users: string): void {
@@ -459,13 +565,20 @@ class Room extends events.EventEmitter {
    * received when a message is sent from anyone (including us)
    */
   __command__b(): void {
-    var message = this._parseMessage.apply(this, arguments);
-    this._history.push(message);
+    var message = this._history.submit(this._parseMessage.apply(this, arguments));
+    if (message) {
+      winston.log('verbose', `Received message for room "${this.name}" as user "${this.user.toString()}":`);
+      winston.log('info', `${(<Message>message).toString()}`);
+      this.emit('message', message);
+      if ((<Message>message).user instanceof User) {
+        (<User>(<Message>message).user).emit('message', message); // blech
+      }
+    }
   }
 
   /**
    * 'u' command
-   * received immediately after every 'b' command
+   * received with every 'b' command
    * maps message IDs with their actual IDs
    * I don't know why
    * @param old_id - the ID that the message was originally sent with
@@ -474,8 +587,14 @@ class Room extends events.EventEmitter {
    */
   __command__u(old_id: string, new_id: string): void {
     var message = this._history.publish(old_id, new_id);
-    winston.log('info', `Received message for room "${this.name}" as user "${this.user.toString()}":\n${message.toString()}`);
-    this.emit('message', message);
+    if (message) {
+      winston.log('verbose', `Received message for room "${this.name}" as user "${this.user.toString()}":`);
+      winston.log('info', `${(<Message>message).toString()}`);
+      this.emit('message', message);
+      if ((<Message>message).user instanceof User) {
+        (<User>(<Message>message).user).emit('message', message); // blech x2
+      }
+    }
   }
 
   /**
@@ -562,7 +681,7 @@ class Room extends events.EventEmitter {
       if (user === void 0) {
         user = new User(user_registered);
         this.users[user_registered] = <User>user;
-        winston.log('debug', `First time seeing registered user "${name}"`);
+        winston.log('debug', `First time seeing registered user "${(<User>user).name}"`);
       }
     }
     // join
@@ -584,6 +703,7 @@ class Room extends events.EventEmitter {
     else {
       if (user instanceof User) {
         (<User>user)._connection_ids.delete(connection_id);
+        delete (<User>user)._ids[session_id];
         if ((<User>user)._connection_ids.length === 0) { // announce if the registered user has completely left the room (ie. isn't in the room in another tab, etc..)
           delete this.users[(<User>user).name];
           winston.log('info', `Registered user "${(<User>user).name}" left room "${this.name}"`);
@@ -659,6 +779,16 @@ class Room extends events.EventEmitter {
   }
 
   /**
+   * 'climited' command
+   * received when we are sending requests too quickly
+   * @param server_time - unix server time
+   * @param ...request - the request that was ignored by the server
+   */
+  __command__climited(server_time: string, ...request: string[]): void {
+    winston.log('warn', `The following command was ignored due to flood detection: "${request.join('')}"`);
+  }
+
+  /**
    * 'delete' command
    * received when a message is deleted
    * @param message_id - the ID of the deleted message
@@ -666,23 +796,42 @@ class Room extends events.EventEmitter {
    */
   __command__delete(message_id: string): void {
     var message = this._history.remove(message_id);
-    winston.log('verbose', `The following message has been deleted in room "${this.name}:\n${message.toString()}"`);
-    this.emit('message_delete', message);
+    if (message !== void 0) {
+      winston.log('verbose', `The following message has been deleted in room "${this.name}:\n${(<Message>message).toString()}"`);
+      this.emit('message_delete', message);
+    }
   }
 
   /**
    * 'deleteall' command
    * received when multiple messages are deleted
    * @param ...message_ids - array of message IDs (colon-delineated, .split() above)
-   * @fires message_delete (multiple);
+   * @fires message_delete (multiple)
    */
   __command__deleteall(...message_ids: string[]): void {
     for (var i = 0, len = message_ids.length; i < len; i++) {
       var id = message_ids[i];
       var message = this._history.remove(id);
-      winston.log('verbose', `The following message has been deleted in room "${this.name}:\n${message.toString()}"`);
-      this.emit('message_delete', message);
+      if (message !== void 0) {
+        winston.log('verbose', `The following message has been deleted in room "${this.name}:\n${(<Message>message).toString()}"`);
+        this.emit('message_delete', message);
+      }
     }
+  }
+
+  /**
+   * 'blocked' command
+   * received when a user is banned from the chatroom
+   * received only by moderators
+   * @param id - the unique moderator-only ID of the banned user
+   * @param ip - the IP of the banned user
+   * @param name - the username of the banned user (if registered, empty otherwise)
+   * @param server_time - unix server time at the time of banning
+   * @fires ban
+   */
+  __command__blocked(id: string, ip: string, name: string, server_time: string): void {
+    winston.log('info', `User "${name || 'anonymous'}" using IP "${ip}" banned from room "${this.name}"`);
+    this.emit('ban', {id, ip, name, server_time});
   }
 
   /**
@@ -708,17 +857,16 @@ class Room extends events.EventEmitter {
     // rejoin message parts
     var raw = raw_message.join(':');
     var user: string | User;
-    var id: User.ID = {
-      id: user_id,
-      ip: user_ip
-    };
     if (user_registered) {
       user_registered = user_registered.toLowerCase();
       user = this.users[user_registered];
       if (user === void 0) {
         user = new User(user_registered);
       }
-      (<User>user)._ids[id.id + id.ip] = id; // wow such hash
+      (<User>user)._ids[user_session_id] = {
+        id: user_id,
+        ip: user_ip,
+      };
     }
     else if (user_temporary) {
       user = user_temporary
@@ -728,73 +876,23 @@ class Room extends events.EventEmitter {
     }
     var message = Message.parse(raw);
     message.id = message_id;
-    message.user_id = id;
+    message.user_id = {
+      name: user.toString(),
+      id: user_id,
+      ip: user_ip,
+    };
     message.room = this;
     message.user = user;
     message.created_at = parseFloat(created_at);
     return message;
   }
 
-  /**
-   * Events
-   */
-
-  /**
-   * Message event
-   * fired when the Room receives a message
-   * 
-   * @event Room#message
-   * @param {Message} message - the message that was received
-   */
-
-  /**
-   * Join event
-   * fired when a user (temporary and registered) joins the room
-   * 
-   * @event Room#join
-   * @param {string | User} user - the user that joined
-   */
-
-  /**
-   * Leave event
-   * fired when a user (temporary and registered) leaves the room
-   * 
-   * @event Room#leave
-   * @param {string | User} user - the user that left
-   */
-
-  /**
-   * Connect event
-   * fired when we join the room
-   * 
-   * @event Room#connect
-   * @param Room room - this room
-   */
-
-  /**
-   * Disconnect event
-   * fired when we leave the room
-   * 
-   * @event Room#disconnect
-   * @param Room room - this room
-   */
-  
-  /**
-   * Spam Ban Warning event
-   * fired when we are warned for sending messages that are too similar too quickly
-   * 
-   * @event Room#spam_ban_warning
-   */
-  
-  /**
-   * Flood Ban event
-   * fired when we are flood banned
-   * 
-   * @event Room#flood_ban
-   */
 }
 
 module Room {
+  /**
+   * Options argument for Room constructor
+   */
   export interface Options {
     cache_size: number;
   }

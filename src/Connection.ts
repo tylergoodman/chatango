@@ -5,6 +5,66 @@ import net = require('net');
 import winston = require('winston');
 import Promise = require('bluebird');
 
+/**
+ * Connection class
+ * wrapper for net.Socket
+ */
+
+/** 
+ * Events
+ */
+
+/**
+ * Connect event
+ * fires when the socket indicates that we have connected to the server
+ * 
+ * @event Connection#connect
+ */
+
+/**
+ * Data event
+ * fires when the socket returns data
+ * 
+ * @event Connection#data
+ * @param {string} data - the date returned from the server on the connection
+ */
+
+/**
+ * End event
+ * fires when the socket receives a FIN packet from the server
+ * 
+ * @event Connection#end
+ */
+
+/**
+ * Timeout event
+ * fires when the socket has received no data for TODO: finish this
+ * 
+ * @event Connection#timeout
+ */
+
+/**
+ * Drain event
+ * fires when the socket buffer has been flushed completely
+ * 
+ * @event Connection#drain
+ */
+
+/**
+ * Error event
+ * fires when the socket receives an error
+ * 
+ * @event Connection#error
+ */
+
+/**
+ * Close event
+ * fires when the connection to the server has closed
+ * 
+ * @event Connection#close
+ * @param {boolean} had_error - indicates that the server closed connection due to an error
+ */
+
 class Connection extends events.EventEmitter {
   socket: net.Socket;
   connected: boolean = false;
@@ -74,6 +134,9 @@ class Connection extends events.EventEmitter {
     });
   }
 
+  /**
+   * Connect to the server
+   */
   connect(port: number = this.port): Promise<void> {
     winston.log('verbose', `Connecting to ${this.address}`);
     return new Promise<void>((resolve, reject) => {
@@ -82,6 +145,9 @@ class Connection extends events.EventEmitter {
     .timeout(Connection.TIMEOUT);
   }
 
+  /**
+   * Disconnect from the server
+   */
   disconnect(): Promise<boolean> {
     winston.log('verbose', `Ending connection to ${this.address}`);
     return new Promise<boolean>((resolve, reject) => {
@@ -98,6 +164,9 @@ class Connection extends events.EventEmitter {
     });
   }
 
+  /**
+   * Send data to the server
+   */
   send(data: string): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       if (!this.connected) {

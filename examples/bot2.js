@@ -1,0 +1,14 @@
+#! node
+
+// var Chatango = require('..'); // VS Code can't find definitions if you do this :(
+var Chatango = require('../dist/index');
+var faker = require('faker');
+
+var room = Chatango.joinRoom('ttttest', 'ttttestuser', 'asdf1234');
+var user = room.user;
+
+room.on('message', function (message) {
+  if (message.body.indexOf(user.name) !== -1) {
+    room.message('hi!');
+  }
+});

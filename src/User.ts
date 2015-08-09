@@ -1,5 +1,6 @@
 /// <reference path="../typings/tsd.d.ts" />
 
+import events = require('events');
 import fs = require('fs');
 import request = require('request');
 import xml2js = require('xml2js');
@@ -10,7 +11,27 @@ import _ = require('lodash');
 import Message = require('./Message');
 import util = require('./util');
 
-class User {
+/**
+ * User class
+ * manages all user-related tasks
+ * TODO - make this a 'singleton' factory
+ */
+
+/**
+ * Events
+ */
+
+/**
+ * Message event
+ * fired when the user has sent a message in a room
+ * 
+ * @event User#message
+ * @param {Message} message - the message that was sent
+ */
+
+// todo - add ban/msgdel/allmsgdel
+
+class User extends events.EventEmitter {
   name: string;
   password: string;
 
@@ -20,8 +41,6 @@ class User {
 
   _ids: {[index: string]: User.ID} = {}; // (mod only) unique identifier/IP pairs
   _connection_ids: util.Set<string> = new util.Set<string>();
-  // remove these later
-  // _session_ids: util.Set<string> = new util.Set<string>();
 
   private _cookies: request.CookieJar = request.jar();
   get ENDPOINT(): string {
@@ -29,6 +48,8 @@ class User {
   }
 
   constructor(name: string, password?: string) {
+    super();
+
     this.name = name;
     this.password = password;
 //    this.cookies.setCookie(request.cookie('cookies_enabled.chatango.com=yes'), 'http://.chatango.com');
@@ -39,6 +60,9 @@ class User {
     return `${this.name}`;
   }
 
+  /**
+   * Populate this user with their saved Message styles
+   */
   init(): Promise<void> {
     var promise;
     if (this.password === void 0) {
@@ -64,6 +88,9 @@ class User {
       });
   }
 
+  /**
+   * Authorize this user to make setStyle, setBackground and setBackgroundImage requests
+   */
   authorize(): Promise<void> {
     winston.log('debug', `Authorizing user "${this.name}"`);
     return new Promise<void>((resolve, reject) => {
@@ -110,6 +137,9 @@ class User {
     });
   }
 
+  /**
+   * Get the Message style for this User
+   */
   getStyle(): Promise<Message.Style> {
     winston.log('debug', `Getting style for user "${this.name}"`);
     return new Promise<Message.Style>((resolve, reject) => {
@@ -132,6 +162,10 @@ class User {
     });
   }
 
+  /**
+   * Set the styling for this User
+   * must be authenticated
+   */
   setStyle(style: Message.Style = new Message.Style): Promise<Message.Style> {
     winston.log('debug', `Saving style for user "${this.name}"`);
 
@@ -169,6 +203,9 @@ class User {
     });
   }
 
+  /**
+   * Get the background styling for this User
+   */
   getBackground(): Promise<Message.Background> {
     winston.log('debug', `Getting background for user "${this.name}"`);
     return new Promise<any>((resolve, reject) => {
@@ -206,6 +243,10 @@ class User {
     });
   }
 
+  /**
+   * Set the background styling for this User
+   * must be authenticated
+   */
   setBackground(background: Message.Background = new Message.Background): Promise<Message.Background> {
     winston.log('silly', `Saving background for user "${this.name}"`);
 
@@ -240,6 +281,10 @@ class User {
     });
   }
 
+  /**
+   * Set the background image for this User
+   * must be authenticated
+   */
   setBackgroundImage(stream: fs.ReadStream): Promise<void> {
     winston.log('silly', `Saving background image for user "${this.name}"`);
     return new Promise<void>((resolve, reject) => {
@@ -270,14 +315,26 @@ class User {
     });
   }
 
+  /**
+   * Get the background image for this User
+   * TODO - return just the data stream?
+   */
   getBackgroundImage(): request.Request {
     return request(`${this.ENDPOINT}/msgbg.jpg`);
   }
 
+  /**
+   * Get the avatar image for this User
+   * TODO - return just the data stream?
+   */
   getAvatar(): request.Request {
     return request(`${this.ENDPOINT}/thumb.jpg`);
   }
 
+  /**
+   * Get the name of the anonymous user given the raw message and session ID
+   * taken and modified from ch.py - https://github.com/Nullspeaker/ch.py
+   */
   static parseAnonName(message: string, _id: string): string {
     // last 4 digits of n_tag and id
     var n_tag = message.match(/^<n(\d{4})\/>/)[1].split('');
@@ -297,6 +354,11 @@ class User {
     return name;
   }
 
+  /**
+   * Static accessors for the above properties
+   * requires initializing for stupid reasons (ENDPOINT property)
+   * TODO - fix the above and call these from the prototype?
+   */
   static getStyle(username: string): Promise<Message.Style> {
     return new User(username).getStyle();
   }
@@ -315,7 +377,12 @@ class User {
 }
 
 module User {
+  /**
+   * ID interface
+   * used for identifying anonymous and temporary users, which is required for message deleting and banning
+   */
   export interface ID {
+    name?: string;
     id: string;
     ip: string;
   }

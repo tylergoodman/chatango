@@ -5,6 +5,10 @@ import _ = require('lodash');
 import User = require('./User');
 import Room = require('./Room');
 
+/**
+ * Message class
+ */
+
 class Message {
   id: string;
   user: string | User;
@@ -180,8 +184,9 @@ module Message {
   }
 
   export class Cache {
-    size: number = 100;
-    private _pending: {[index: string]: Message} = {};
+    size: number;
+    map: {[index: string]: string} = {};
+    private _pending: {[index: string]: string | Message} = {};
     private _cache: Message[] = [];
     private _dict: {[index: string]: Message} = {};
 
@@ -189,27 +194,17 @@ module Message {
       _.extend(this, options);
     }
 
-    get(id: string): Message {
-      return this._dict[id];
+    toString(): string {
+      return this._cache.toString();
     }
 
-    push(message: Message): Cache {
-      // add new message to pending
-      this._pending[message.id] = message;
-
-      return this;
-    }
-
-    publish(id: string, new_id: string): Message {
-      // get pending message
-      var message = this._pending[id];
+    private _push(message: Message, new_id: string): void {
       // remove from pending
-      delete this._pending[id];
+      delete this._pending[message.id];
       // assign new ID
       message.id = new_id;
       // add to dictionary
       this._dict[new_id] = message;
-
       // add to cache
       this._cache.push(message);
       // remove oldest
@@ -217,18 +212,58 @@ module Message {
         var old = this._cache.shift();
         delete this._dict[old.id];
       }
+    }
+
+    get(id: string): Message {
+      return this._dict[id];
+    }
+
+    submit(message: Message): void | Message {
+      // if we got the 'u' event first, this message was already published
+      // get pending ID
+      var new_id = <string>this._pending[message.id];
+      // if we get the 'b' event before the 'u' event, add message to pending
+      if (new_id === void 0) {
+        // if ID wasn't pending, add message to pending
+        this._pending[message.id] = message;
+        return void 0;
+      }
+
+      // add to cache
+      this._push(message, new_id);
 
       return message;
     }
 
-    remove(id: string): Message {
+    publish(id: string, new_id: string): void | Message {
+      // if we got the 'b' event first, this message ID was already published
+      // get pending message
+      var message = <Message>this._pending[id];
+      // if we get the 'u' event before the 'b' event, add ID to pending
+      if (message === void 0) {
+        // if message wasn't pending, add ID to pending
+        this._pending[id] = new_id;
+        return void 0;
+      }
+
+      // add to cache
+      this._push(message, new_id);
+
+      return message;
+    }
+
+    remove(id: string): void | Message {
       var message = this._dict[id];
+      if (message === void 0) {
+        return void 0;
+      }
       delete this._dict[id];
-      this._cache.slice(this._cache.indexOf(message), 1);
+      this._cache.splice(this._cache.indexOf(message), 1);
 
       return message;
     }
   }
+  Cache.prototype.size = 100;
   export module Cache {
     export interface Options {
       size: number;

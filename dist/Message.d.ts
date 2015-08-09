@@ -68,14 +68,19 @@ declare module Message {
     }
     class Cache {
         size: number;
+        map: {
+            [index: string]: string;
+        };
         private _pending;
         private _cache;
         private _dict;
         constructor(options?: Cache.Options);
+        toString(): string;
+        private _push(message, new_id);
         get(id: string): Message;
-        push(message: Message): Cache;
-        publish(id: string, new_id: string): Message;
-        remove(id: string): Message;
+        submit(message: Message): void | Message;
+        publish(id: string, new_id: string): void | Message;
+        remove(id: string): void | Message;
     }
     module Cache {
         interface Options {

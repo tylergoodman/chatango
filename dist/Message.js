@@ -103,22 +103,17 @@ var Message;
     var Font = Message.Font;
     var Cache = (function () {
         function Cache(options) {
-            this.size = 100;
+            this.map = {};
             this._pending = {};
             this._cache = [];
             this._dict = {};
             _.extend(this, options);
         }
-        Cache.prototype.get = function (id) {
-            return this._dict[id];
+        Cache.prototype.toString = function () {
+            return this._cache.toString();
         };
-        Cache.prototype.push = function (message) {
-            this._pending[message.id] = message;
-            return this;
-        };
-        Cache.prototype.publish = function (id, new_id) {
-            var message = this._pending[id];
-            delete this._pending[id];
+        Cache.prototype._push = function (message, new_id) {
+            delete this._pending[message.id];
             message.id = new_id;
             this._dict[new_id] = message;
             this._cache.push(message);
@@ -126,16 +121,40 @@ var Message;
                 var old = this._cache.shift();
                 delete this._dict[old.id];
             }
+        };
+        Cache.prototype.get = function (id) {
+            return this._dict[id];
+        };
+        Cache.prototype.submit = function (message) {
+            var new_id = this._pending[message.id];
+            if (new_id === void 0) {
+                this._pending[message.id] = message;
+                return void 0;
+            }
+            this._push(message, new_id);
+            return message;
+        };
+        Cache.prototype.publish = function (id, new_id) {
+            var message = this._pending[id];
+            if (message === void 0) {
+                this._pending[id] = new_id;
+                return void 0;
+            }
+            this._push(message, new_id);
             return message;
         };
         Cache.prototype.remove = function (id) {
             var message = this._dict[id];
+            if (message === void 0) {
+                return void 0;
+            }
             delete this._dict[id];
-            this._cache.slice(this._cache.indexOf(message), 1);
+            this._cache.splice(this._cache.indexOf(message), 1);
             return message;
         };
         return Cache;
     })();
     Message.Cache = Cache;
+    Cache.prototype.size = 100;
 })(Message || (Message = {}));
 module.exports = Message;

@@ -1,9 +1,10 @@
 #! node
 
-var Chatango = require('../dist/index');
+var Chatango = require('..');
 var faker = require('faker');
 
 var room = Chatango.joinRoom('ttttest', 'ttttestuser', 'asdf1234');
+var user = room.user;
 
 room.on('message', function (message) {
   console.log(message);

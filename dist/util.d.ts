@@ -1,5 +1,5 @@
 export declare class Set<T> {
-    elements: T[];
+    private _elements;
     length: number;
     constructor(initial?: T[]);
     add(element: T): Set<T>;

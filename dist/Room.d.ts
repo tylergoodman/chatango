@@ -33,7 +33,6 @@ declare class Room extends events.EventEmitter {
     underline: boolean;
     private _reset();
     private _send(command);
-    private _send(command);
     private _receiveData(data);
     private _getServer(room_name?);
     connect(): Promise<Room>;
@@ -41,7 +40,8 @@ declare class Room extends events.EventEmitter {
     message(content: string): Room;
     delete(message: string | Message): Room;
     deleteAll(id: User | Message): Room;
-    ban(user: User): Room;
+    ban(user: Message | User.ID): Room;
+    unban(user: Message | User.ID): Room;
     __command__ok(owner: string, session_id: string, session_status: string, username: string, server_time: string, ip: string, moderators: string, server_id: string): void;
     __command__i(): void;
     __command__nomore(): void;
@@ -60,8 +60,10 @@ declare class Room extends events.EventEmitter {
     __command__show_fw(): void;
     __command__show_tb(seconds: string): void;
     __command__tb(seconds_remaining: string): void;
+    __command__climited(server_time: string, ...request: string[]): void;
     __command__delete(message_id: string): void;
     __command__deleteall(...message_ids: string[]): void;
+    __command__blocked(id: string, ip: string, name: string, server_time: string): void;
     private _parseMessage(created_at, user_registered, user_temporary, user_session_id, user_id, message_id, user_ip, no_idea, no_idea2, ...raw_message);
 }
 declare module Room {

@@ -46,14 +46,14 @@ describe('User', function () {
       .then(function (background) {
         // console.log(background);
   
-        background.align.should.be.String.with.length(2).and.match(/^(tl|tr|bl|br)$/);
-        background.ialp.should.be.Number.within(0, 100);
-        background.tile.should.be.Number.within(0, 1);
-        background.bgalp.should.be.Number.within(0, 100);
-        background.bgc.should.be.String.and.match(/^(.{0}|[0-9a-fA-F]{6})$/);
-        background.useimg.should.be.Number.within(0, 1);
-        background.hasrec.should.be.Number.within(0, 1);
-        background.isvid.should.be.Number.within(0, 1);
+        background.align.should.be.a.String.with.length(2).and.match(/^(tl|tr|bl|br)$/);
+        background.ialp.should.be.a.Number.within(0, 100);
+        background.tile.should.be.a.Number.within(0, 1);
+        background.bgalp.should.be.a.Number.within(0, 100);
+        background.bgc.should.be.a.String.and.match(/^(.{0}|[0-9a-fA-F]{6})$/);
+        background.useimg.should.be.a.Number.within(0, 1);
+        background.hasrec.should.be.a.Number.within(0, 1);
+        background.isvid.should.be.a.Number.within(0, 1);
   
         done();
       })
@@ -66,10 +66,10 @@ describe('User', function () {
       .then(function (style) {
         // console.log(style);
   
-        style.nameColor.should.be.String.and.match(/^(.{0}|[0-9a-fA-F]{6})$/);
-        style.textColor.should.be.String.and.match(/^(.{0}|[0-9a-fA-F]{6})$/);
-        style.fontSize.should.be.Number.within(9, 22);
-        style.fontFamily.should.be.String;
+        style.nameColor.should.be.a.String.and.match(/^(.{0}|[0-9a-fA-F]{6})$/);
+        style.textColor.should.be.a.String.and.match(/^(.{0}|[0-9a-fA-F]{6})$/);
+        style.fontSize.should.be.a.Number.within(9, 22);
+        style.fontFamily.should.be.a.String;
         // font should be one of the enumerated fonts
         Message.Font.should.containEql(style.fontFamily);
         style.bold.should.be.Boolean;
@@ -244,22 +244,18 @@ describe('Room', function () {
       room
         .connect()
         .then(function () {
-          room.message(body);
-        })
-        .then(function () {
           return new Promise(function (resolve, reject) {
-            room.on('message', function (message) {
-              message.should.have.properties({
-                'room': room,
-                'user': room.user,
-                'body': body,
-              });
-              resolve();
-            });
+            room.once('message', resolve);
+            room.message(body);
           });
         })
-        .timeout(750)
-        .then(function () {
+        .timeout(1000, 'timed out waiting for a message command from the room')
+        .then(function (message) {
+          message.should.have.properties({
+            'room': room,
+            'user': room.user,
+            'body': body,
+          });
           return room.disconnect();
         })
         .then(function () {
@@ -283,31 +279,137 @@ describe('Room', function () {
 
   it('delete', function (done) {
     var anon = new Room('ttttest');
-    var registered = new Room('ttttest', new User('ttttestuser', 'asdf1234'));
+    var moderator = new Room('ttttest', new User('ttttestuser', 'asdf1234'));
     var message = faker.hacker.phrase();
-    registered.connect()
+    moderator.connect()
       .then(function () {
         return anon.connect();
       })
       .then(function () {
         return new Promise(function (resolve, reject) {
-          registered.once('message', resolve);
+          moderator.once('message', resolve);
           anon.message(message);
-        }).timeout(2000);
-      })
-      .then(function (message) {
-        registered.delete(message);
-        return new Promise(function (resolve, reject) {
-          registered.once('message_delete', resolve);
         });
       })
+      .timeout(5000, 'timed out waiting to receive a message command from the room')
+      .then(function (message) {
+        return new Promise(function (resolve, reject) {
+          moderator.once('message_delete', resolve);
+          moderator.delete(message);
+        });
+      })
+      .timeout(5000, 'timed out waiting to receive a message delete command from the room')
       .then(function (deleted_message) {
         message.should.equal(deleted_message.body);
+        return anon.disconnect();
+      })
+      .then(function () {
+        return moderator.disconnect();
+      })
+      .then(function () {
         done();
       })
       .catch(done);
-  })
+  });
+
+  describe('deleteAll', function () {
+
+    it('by Message', function (done) {
+      var user = new User('ttttestuser', 'asdf1234')
+      var registered = new Room('ttttest', user);
+      registered.connect()
+        .then(function () {
+          return new Promise(function (resolve, reject) {
+            registered.once('message', resolve);
+            registered.message(faker.hacker.phrase());
+          });
+        })
+        .timeout(5000, 'timed out waiting to receive a message command from the room')
+        .then(function (message) {
+          console.log('DICKS');
+          return new Promise(function (resolve, reject) {
+            console.log('ASSES');
+            registered.once('message_delete', resolve);
+            registered.deleteAll(message);
+          })
+        })
+        .timeout(5000, 'timed out waiting to receive a delete command from the room')
+        .then(function (deleted_message) {
+          return registered.disconnect();
+        })
+        .then(function () {
+          done();
+        })
+        .catch(done);
+    });
+
+    it('by User', function (done) {
+      var user = new User('ttttestuser', 'asdf1234')
+      var registered = new Room('ttttest', user);
+      registered.connect()
+        .then(function () {
+          return new Promise(function (resolve, reject) {
+            registered.once('message', resolve);
+            registered.message(faker.hacker.phrase());
+          });
+        })
+        .timeout(5000, 'timed out waiting for a message command from the room')
+        .then(function (message) {
+          return new Promise(function (resolve, reject) {
+            registered.once('message_delete', resolve);
+            registered.deleteAll(user);
+          })
+        })
+        .timeout(5000, 'timed out waiting for a delete command from the room')
+        .then(function (deleted_message) {
+          return registered.disconnect();
+        })
+        .then(function () {
+          done();
+        })
+        .catch(done);
+    });
+
+  });
+
+  describe('ban and unban', function () {
+    it('anonymous', function (done) {
+      var moderator = new Room('ttttest', new User('ttttestuser', 'asdf1234'));
+      var anon = new Room('ttttest');
+      moderator.connect()
+        .delay(7000) // starting to hit message rate limiting doing these tests...
+        .then(function () {
+          return anon.connect();
+        })
+        .then(function () {
+          return new Promise(function (resolve, reject) {
+            moderator.once('message', resolve);
+            anon.message(faker.hacker.phrase());
+          });
+        })
+        .timeout(5000, 'timed out waiting for a message command from the room')
+        .then(function (message) {
+          return new Promise(function (resolve, reject) {
+            moderator.once('ban', resolve);
+            moderator.ban(message);
+          });
+        })
+        .timeout(5000, 'timed out waiting for a ban command from the room')
+        .then(function (ban_info) {
+          ban_info.id.should.be.a.String;
+          ban_info.ip.should.be.a.String;
+          ban_info.name.should.be.a.String.with.length(0);
+          return moderator.disconnect().join(anon.disconnect());
+        })
+        .then(function () {
+          done();
+        })
+        .catch(done);
+    });
+  });
+
 });
+
 
 describe('top-level class creator functions', function () {
   it('joinRoom', function (done) {
