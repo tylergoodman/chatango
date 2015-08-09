@@ -138,11 +138,12 @@ class Connection extends events.EventEmitter {
    * Connect to the server
    */
   connect(port: number = this.port): Promise<void> {
+    this.port = port;
     winston.log('verbose', `Connecting to ${this.address}`);
     return new Promise<void>((resolve, reject) => {
       this.socket.connect(this.port, this.host, resolve);
     })
-    .timeout(Connection.TIMEOUT);
+    .timeout(Connection.TIMEOUT, `timed out while connecting to server ${this.address}`);
   }
 
   /**
@@ -154,7 +155,7 @@ class Connection extends events.EventEmitter {
       this.socket.end();
       this.once('close', resolve);
     })
-    .timeout(Connection.TIMEOUT)
+    .timeout(Connection.TIMEOUT, `timed out while waiting for connection to server ${this.address} to close`)
     .catch(Promise.TimeoutError, () => {
       return new Promise<boolean>((resolve, reject) => {
         winston.log('warn', `Error while disconnecting from ${this.address}, forcing`);
@@ -177,7 +178,7 @@ class Connection extends events.EventEmitter {
       winston.log('silly', `Sending data to ${this.address}: "${data}"`);
       this.socket.write(data, resolve);
     })
-    .timeout(Connection.TIMEOUT); 
+    .timeout(Connection.TIMEOUT, `timed out while sending data to server ${this.address}`); 
   }
 }
 

@@ -19,7 +19,6 @@ var User = (function (_super) {
         this.joined_at = 0;
         this.style = new Message.Style;
         this.background = new Message.Background;
-        this._ids = {};
         this._connection_ids = new util.Set();
         this._cookies = request.jar();
         this.name = name;

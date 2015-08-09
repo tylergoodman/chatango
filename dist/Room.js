@@ -265,23 +265,21 @@ var Room = (function (_super) {
         if (message instanceof Message) {
             id = message.id;
         }
+        else {
+            id = message;
+        }
         this._send(['delmsg', id]);
         return this;
     };
-    Room.prototype.deleteAll = function (id) {
-        if (id instanceof Message) {
-            var message = id;
-            if (_.isString(message.user)) {
-                this._send(['delallmsg', message.user_id.id, message.user_id.ip]);
-                return this;
-            }
-            id = message.user;
+    Room.prototype.deleteAll = function (user) {
+        var id;
+        if (user instanceof Message) {
+            id = user.user_id;
         }
-        var user = id;
-        var ids = _.values(user._ids);
-        for (var i = 0, len = ids.length; i < len; i++) {
-            this._send(['delallmsg', ids[i].id, ids[i].ip, user.name]);
+        else {
+            id = user;
         }
+        this._send(['delallmsg', id.id, id.ip, id.name]);
         return this;
     };
     Room.prototype.ban = function (user) {
@@ -433,7 +431,6 @@ var Room = (function (_super) {
         else {
             if (user instanceof User) {
                 user._connection_ids.delete(connection_id);
-                delete user._ids[session_id];
                 if (user._connection_ids.length === 0) {
                     delete this.users[user.name];
                     winston.log('info', "Registered user \"" + user.name + "\" left room \"" + this.name + "\"");
@@ -513,10 +510,6 @@ var Room = (function (_super) {
             if (user === void 0) {
                 user = new User(user_registered);
             }
-            user._ids[user_session_id] = {
-                id: user_id,
-                ip: user_ip,
-            };
         }
         else if (user_temporary) {
             user = user_temporary;
@@ -527,7 +520,7 @@ var Room = (function (_super) {
         var message = Message.parse(raw);
         message.id = message_id;
         message.user_id = {
-            name: user.toString(),
+            name: user.toString().toLowerCase(),
             id: user_id,
             ip: user_ip,
         };

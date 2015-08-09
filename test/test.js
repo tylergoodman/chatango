@@ -326,9 +326,8 @@ describe('Room', function () {
         })
         .timeout(5000, 'timed out waiting to receive a message command from the room')
         .then(function (message) {
-          console.log('DICKS');
+          // console.dir(message);
           return new Promise(function (resolve, reject) {
-            console.log('ASSES');
             registered.once('message_delete', resolve);
             registered.deleteAll(message);
           })
@@ -357,7 +356,7 @@ describe('Room', function () {
         .then(function (message) {
           return new Promise(function (resolve, reject) {
             registered.once('message_delete', resolve);
-            registered.deleteAll(user);
+            registered.deleteAll(message.user_id);
           })
         })
         .timeout(5000, 'timed out waiting for a delete command from the room')

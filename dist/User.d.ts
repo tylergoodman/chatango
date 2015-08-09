@@ -11,9 +11,6 @@ declare class User extends events.EventEmitter {
     joined_at: number;
     style: Message.Style;
     background: Message.Background;
-    _ids: {
-        [index: string]: User.ID;
-    };
     _connection_ids: util.Set<string>;
     private _cookies;
     ENDPOINT: string;
@@ -36,7 +33,7 @@ declare class User extends events.EventEmitter {
 }
 declare module User {
     interface ID {
-        name?: string;
+        name: string;
         id: string;
         ip: string;
     }

@@ -401,6 +401,9 @@ class Room extends events.EventEmitter {
     if (message instanceof Message) {
       id = (<Message>message).id;
     }
+    else {
+      id = <string>message;
+    }
 
     this._send(['delmsg', id]);
     return this;
@@ -409,34 +412,29 @@ class Room extends events.EventEmitter {
   /**
    * Delete all messages from a user
    * 
-   * @param user - the user whose messages to delete, or the message sent by an unregistered user
+   * @param user - the user's ID, or a message sent by the user
    */
-  deleteAll(id: User | Message): Room {
-    if (id instanceof Message) {
-      var message = <Message>id;
-      if (_.isString(message.user)) {
-        this._send(['delallmsg', message.user_id.id, message.user_id.ip]);
-        return this;
-      }
-      id = <User>message.user;
+  deleteAll(user: Message | User.ID): Room {
+    var id: User.ID;
+    if (user instanceof Message) {
+      id = (<Message>user).user_id;
     }
-    var user = <User>id;
-    var ids = _.values(user._ids);
-    for (var i = 0, len = ids.length; i < len; i++) {
-      this._send(['delallmsg', ids[i].id, ids[i].ip, user.name]);
+    else {
+      id = <User.ID>user;
     }
+    this._send(['delallmsg', id.id, id.ip, id.name]);
     return this;
   }
 
   /**
    * Ban a user
    * 
-   * @param
+   * @param user - the user's ID, or a message sent by the user
    */
   ban(user: Message | User.ID): Room {
     var id: User.ID;
     if (user instanceof Message) {
-      id = user.user_id;
+      id = (<Message>user).user_id;
     }
     else {
       id = <User.ID>user;
@@ -447,11 +445,13 @@ class Room extends events.EventEmitter {
 
   /**
    * Unban a user
+   * 
+   * @param user - the user's ID, or a message sent by the user
    */
   unban(user: Message | User.ID): Room {
     var id: User.ID;
     if (user instanceof Message) {
-      id = user.user_id;
+      id = (<Message>user).user_id;
     }
     else {
       id = <User.ID>user;
@@ -703,7 +703,6 @@ class Room extends events.EventEmitter {
     else {
       if (user instanceof User) {
         (<User>user)._connection_ids.delete(connection_id);
-        delete (<User>user)._ids[session_id];
         if ((<User>user)._connection_ids.length === 0) { // announce if the registered user has completely left the room (ie. isn't in the room in another tab, etc..)
           delete this.users[(<User>user).name];
           winston.log('info', `Registered user "${(<User>user).name}" left room "${this.name}"`);
@@ -863,10 +862,6 @@ class Room extends events.EventEmitter {
       if (user === void 0) {
         user = new User(user_registered);
       }
-      (<User>user)._ids[user_session_id] = {
-        id: user_id,
-        ip: user_ip,
-      };
     }
     else if (user_temporary) {
       user = user_temporary
@@ -877,7 +872,7 @@ class Room extends events.EventEmitter {
     var message = Message.parse(raw);
     message.id = message_id;
     message.user_id = {
-      name: user.toString(),
+      name: user.toString().toLowerCase(),
       id: user_id,
       ip: user_ip,
     };

@@ -39,7 +39,7 @@ declare class Room extends events.EventEmitter {
     disconnect(): Promise<void>;
     message(content: string): Room;
     delete(message: string | Message): Room;
-    deleteAll(id: User | Message): Room;
+    deleteAll(user: Message | User.ID): Room;
     ban(user: Message | User.ID): Room;
     unban(user: Message | User.ID): Room;
     __command__ok(owner: string, session_id: string, session_status: string, username: string, server_time: string, ip: string, moderators: string, server_id: string): void;

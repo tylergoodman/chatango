@@ -68,11 +68,12 @@ var Connection = (function (_super) {
     Connection.prototype.connect = function (port) {
         var _this = this;
         if (port === void 0) { port = this.port; }
+        this.port = port;
         winston.log('verbose', "Connecting to " + this.address);
         return new Promise(function (resolve, reject) {
             _this.socket.connect(_this.port, _this.host, resolve);
         })
-            .timeout(Connection.TIMEOUT);
+            .timeout(Connection.TIMEOUT, "timed out while connecting to server " + this.address);
     };
     Connection.prototype.disconnect = function () {
         var _this = this;
@@ -81,7 +82,7 @@ var Connection = (function (_super) {
             _this.socket.end();
             _this.once('close', resolve);
         })
-            .timeout(Connection.TIMEOUT)
+            .timeout(Connection.TIMEOUT, "timed out while waiting for connection to server " + this.address + " to close")
             .catch(Promise.TimeoutError, function () {
             return new Promise(function (resolve, reject) {
                 winston.log('warn', "Error while disconnecting from " + _this.address + ", forcing");
@@ -101,7 +102,7 @@ var Connection = (function (_super) {
             winston.log('silly', "Sending data to " + _this.address + ": \"" + data + "\"");
             _this.socket.write(data, resolve);
         })
-            .timeout(Connection.TIMEOUT);
+            .timeout(Connection.TIMEOUT, "timed out while sending data to server " + this.address);
     };
     Connection.TIMEOUT = 3000;
     return Connection;

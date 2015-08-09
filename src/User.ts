@@ -39,7 +39,6 @@ class User extends events.EventEmitter {
   style: Message.Style = new Message.Style;
   background: Message.Background = new Message.Background;
 
-  _ids: {[index: string]: User.ID} = {}; // (mod only) unique identifier/IP pairs
   _connection_ids: util.Set<string> = new util.Set<string>();
 
   private _cookies: request.CookieJar = request.jar();
@@ -382,7 +381,7 @@ module User {
    * used for identifying anonymous and temporary users, which is required for message deleting and banning
    */
   export interface ID {
-    name?: string;
+    name: string;
     id: string;
     ip: string;
   }
