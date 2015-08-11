@@ -23,6 +23,7 @@ declare class Room extends events.EventEmitter {
     private _buffer;
     private _first_send;
     private _anonymous;
+    private _ping;
     private static TIMEOUT;
     constructor(name: string, user?: string | User, options?: Room.Options);
     private _bold;
@@ -34,6 +35,10 @@ declare class Room extends events.EventEmitter {
     private _reset();
     private _send(command);
     private _receiveData(data);
+    private _pingTask();
+    private _startPing();
+    private _stopPing();
+    private _restartPing();
     private _getServer(room_name?);
     connect(): Promise<Room>;
     disconnect(): Promise<void>;

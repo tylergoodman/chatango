@@ -98,6 +98,7 @@ var Room = (function (_super) {
         configurable: true
     });
     Room.prototype._reset = function () {
+        this._stopPing();
         this._buffer = '';
         this._first_send = true;
         return this;
@@ -128,6 +129,9 @@ var Room = (function (_super) {
         winston.log('silly', "Received commands from room \"" + this.name + "\": " + commands);
         for (var i = 0; i < commands.length; i++) {
             var _a = commands[i].split(':'), command = _a[0], args = _a.slice(1);
+            if (command === '') {
+                continue;
+            }
             winston.log('debug', "Received command from room \"" + this.name + "\": " + command);
             var handler = this[("__command__" + command)];
             if (handler === void 0) {
@@ -137,6 +141,19 @@ var Room = (function (_super) {
                 handler.apply(this, args);
             }
         }
+    };
+    Room.prototype._pingTask = function () {
+        this._send('');
+    };
+    Room.prototype._startPing = function () {
+        this._ping = setInterval(this._pingTask.bind(this), 20000);
+    };
+    Room.prototype._stopPing = function () {
+        clearInterval(this._ping);
+    };
+    Room.prototype._restartPing = function () {
+        this._stopPing();
+        this._startPing();
     };
     Room.prototype._getServer = function (room_name) {
         if (room_name === void 0) { room_name = this.name; }
@@ -221,6 +238,7 @@ var Room = (function (_super) {
         })
             .then(function () {
             winston.log('info', "Joined room \"" + _this.name + "\" as user \"" + _this.user.toString() + "\"");
+            _this._startPing();
             _this.emit('connect', _this);
             return _this;
         })

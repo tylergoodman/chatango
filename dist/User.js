@@ -78,7 +78,7 @@ var User = (function (_super) {
                     winston.log('error', "Error while authorizing user \"" + _this.name + "\": " + error);
                     return reject(error);
                 }
-                winston.log('info', "Authorized user: \"" + _this.name + "\"");
+                winston.log('info', "Authorized user \"" + _this.name + "\"");
                 resolve();
             });
         });

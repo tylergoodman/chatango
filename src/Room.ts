@@ -100,6 +100,7 @@ class Room extends events.EventEmitter {
   private _buffer: string = '';
   private _first_send: boolean = true;
   private _anonymous: boolean = false;
+  private _ping: number;
 
   private static TIMEOUT = 3000;
 
@@ -171,6 +172,7 @@ class Room extends events.EventEmitter {
   }
 
   private _reset(): Room {
+    this._stopPing();
     this._buffer = '';
     this._first_send = true;
     return this;
@@ -211,6 +213,9 @@ class Room extends events.EventEmitter {
     winston.log('silly', `Received commands from room "${this.name}": ${commands}`);
     for (var i = 0; i < commands.length; i++) {
       var [command, ...args] = commands[i].split(':');
+      if (command === '') { // ping
+        continue;
+      }
       winston.log('debug', `Received command from room "${this.name}": ${command}`);
       var handler = this[`__command__${command}`];
       if (handler === void 0) {
@@ -220,6 +225,20 @@ class Room extends events.EventEmitter {
         handler.apply(this, args);
       }
     }
+  }
+
+  private _pingTask(): void {
+    this._send('');
+  }
+  private _startPing(): void {
+    this._ping = setInterval(this._pingTask.bind(this), 20000);
+  }
+  private _stopPing(): void {
+    clearInterval(this._ping);
+  }
+  private _restartPing(): void {
+    this._stopPing();
+    this._startPing();
   }
 
   /**
@@ -330,6 +349,7 @@ class Room extends events.EventEmitter {
       })
       .then(() => {
         winston.log('info', `Joined room "${this.name}" as user "${this.user.toString()}"`);
+        this._startPing();
         this.emit('connect', this);
         return this;
       })
@@ -410,7 +430,7 @@ class Room extends events.EventEmitter {
   }
 
   /**
-   * Delete all messages from a user
+   * Delete all messages by a user
    * 
    * @param user - the user's ID, or a message sent by the user
    */

@@ -14,7 +14,7 @@ import util = require('./util');
 /**
  * User class
  * manages all user-related tasks
- * TODO - make this a 'singleton' factory
+ * TODO - make this a 'singleton' factory, or cache users in Room temporarily with a limit
  */
 
 /**
@@ -109,7 +109,11 @@ class User extends events.EventEmitter {
           winston.log('error', `Error while authorizing user "${this.name}": ${error}`);
           return reject(error);
         }
-        winston.log('info', `Authorized user: "${this.name}"`);
+        if (response.statusCode !== 200) {
+          winston.log('error', `Error while authorizing user "${this.name}": ${response.statusMessage}`);
+          return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
+        }
+        winston.log('info', `Authorized user "${this.name}"`);
         resolve();
       });
 //      request({
