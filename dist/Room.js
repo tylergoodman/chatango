@@ -241,11 +241,6 @@ var Room = (function (_super) {
             _this._startPing();
             _this.emit('connect', _this);
             return _this;
-        })
-            .timeout(Room.TIMEOUT, "timed out while connecting to room \"" + this.name + "\" as user \"" + this.user.toString() + "\"")
-            .catch(Promise.TimeoutError, function (err) {
-            _this.emit('error', err);
-            return _this.disconnect();
         });
     };
     Room.prototype.disconnect = function () {
