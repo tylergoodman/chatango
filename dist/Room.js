@@ -242,7 +242,10 @@ var Room = (function (_super) {
             _this.emit('connect', _this);
             return _this;
         })
-            .timeout(Room.TIMEOUT, "timed out while connecting to room \"" + this.name + "\" as user \"" + this.user.toString() + "\"");
+            .timeout(Room.TIMEOUT, "timed out while connecting to room \"" + this.name + "\" as user \"" + this.user.toString() + "\"")
+            .catch(Promise.TimeoutError, function (err) {
+            return _this.disconnect();
+        });
     };
     Room.prototype.disconnect = function () {
         var _this = this;
@@ -252,6 +255,7 @@ var Room = (function (_super) {
             winston.log('info', "Left room \"" + _this.name + "\" as user \"" + _this.user.toString() + "\"");
             _this._reset();
             _this.emit('disconnect');
+            return _this;
         });
     };
     Room.prototype.message = function (content) {

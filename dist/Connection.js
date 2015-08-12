@@ -102,7 +102,7 @@ var Connection = (function (_super) {
             winston.log('silly', "Sending data to " + _this.address + ": \"" + data + "\"");
             _this.socket.write(data, resolve);
         })
-            .timeout(Connection.TIMEOUT, "timed out while sending data to server " + this.address);
+            .timeout(Connection.TIMEOUT, "timed out while trying to send data to server " + this.address);
     };
     Connection.TIMEOUT = 3000;
     return Connection;

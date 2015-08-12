@@ -353,7 +353,10 @@ class Room extends events.EventEmitter {
         this.emit('connect', this);
         return this;
       })
-      .timeout(Room.TIMEOUT, `timed out while connecting to room "${this.name}" as user "${this.user.toString()}"`);
+      .timeout(Room.TIMEOUT, `timed out while connecting to room "${this.name}" as user "${this.user.toString()}"`)
+      .catch(Promise.TimeoutError, (err) => {
+        return this.disconnect();
+      });
   }
 
   /**
@@ -361,13 +364,14 @@ class Room extends events.EventEmitter {
    * 
    * @fires disconnect
    */
-  disconnect(): Promise<void> {
+  disconnect(): Promise<Room> {
     winston.log('verbose', `Leaving room "${this.name}" as user "${this.user.toString()}"`);
     return this._connection.disconnect()
       .then(() => {
         winston.log('info', `Left room "${this.name}" as user "${this.user.toString()}"`);
         this._reset();
         this.emit('disconnect');
+        return this;
       });
   }
 

@@ -78,6 +78,10 @@ var User = (function (_super) {
                     winston.log('error', "Error while authorizing user \"" + _this.name + "\": " + error);
                     return reject(error);
                 }
+                if (response.statusCode !== 200) {
+                    winston.log('error', "Error while authorizing user \"" + _this.name + "\": " + response.statusMessage);
+                    return reject(new Error(response.statusCode + ": " + response.statusMessage));
+                }
                 winston.log('info', "Authorized user \"" + _this.name + "\"");
                 resolve();
             });

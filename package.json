@@ -1,6 +1,6 @@
 {
   "name": "chatango",
-  "version": "0.0.1",
+  "version": "1.0.1",
   "description": "unofficial library for interacting with Chatango.com",
   "private": true,
   "main": "./dist/index.js",

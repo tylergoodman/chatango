@@ -41,7 +41,7 @@ declare class Room extends events.EventEmitter {
     private _restartPing();
     private _getServer(room_name?);
     connect(): Promise<Room>;
-    disconnect(): Promise<void>;
+    disconnect(): Promise<Room>;
     message(content: string): Room;
     delete(message: string | Message): Room;
     deleteAll(user: Message | User.ID): Room;

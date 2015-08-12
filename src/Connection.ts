@@ -178,7 +178,7 @@ class Connection extends events.EventEmitter {
       winston.log('silly', `Sending data to ${this.address}: "${data}"`);
       this.socket.write(data, resolve);
     })
-    .timeout(Connection.TIMEOUT, `timed out while sending data to server ${this.address}`); 
+    .timeout(Connection.TIMEOUT, `timed out while trying to send data to server ${this.address}`);
   }
 }
 
