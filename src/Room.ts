@@ -352,11 +352,6 @@ class Room extends events.EventEmitter {
         this._startPing();
         this.emit('connect', this);
         return this;
-      })
-      .timeout(Room.TIMEOUT, `timed out while connecting to room "${this.name}" as user "${this.user.toString()}"`)
-      .catch(Promise.TimeoutError, (err) => {
-        this.emit('error', err);
-        return this.disconnect();
       });
   }
 
