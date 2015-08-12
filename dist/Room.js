@@ -244,6 +244,7 @@ var Room = (function (_super) {
         })
             .timeout(Room.TIMEOUT, "timed out while connecting to room \"" + this.name + "\" as user \"" + this.user.toString() + "\"")
             .catch(Promise.TimeoutError, function (err) {
+            _this.emit('error', err);
             return _this.disconnect();
         });
     };
