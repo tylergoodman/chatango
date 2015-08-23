@@ -68,8 +68,7 @@ import Promise = require('bluebird');
 class Connection extends events.EventEmitter {
   socket: net.Socket;
   connected: boolean = false;
-  auto_reconnect: boolean = false;
-  
+
   host: string;
   port: number;
 
@@ -119,18 +118,13 @@ class Connection extends events.EventEmitter {
 
     this.socket.on('error', (err: Error) => {
       winston.log('error', `Error on connection to ${this.address}: ${err}`);
-      this.auto_reconnect = false;
-      this.emit('error', err);
+      this.disconnect();
     });
 
     this.socket.on('close', (had_error: boolean) => {
       this.connected = false;
       winston.log('info', `Connection to ${this.address} closed`);
       this.emit('close', had_error);
-      if (this.auto_reconnect) {
-        winston.log('info', `Attempting to reconnect to ${this.address}`);
-        this.connect();
-      }
     });
   }
 
@@ -141,9 +135,15 @@ class Connection extends events.EventEmitter {
     this.port = port;
     winston.log('verbose', `Connecting to ${this.address}`);
     return new Promise<void>((resolve, reject) => {
-      this.socket.connect(this.port, this.host, resolve);
+      this.once('connect', resolve);
+      this.socket.once('error', reject);
+      this.socket.connect(this.port, this.host);
     })
-    .timeout(Connection.TIMEOUT, `timed out while connecting to server ${this.address}`);
+    .timeout(Connection.TIMEOUT, `timed out while connecting to server ${this.address}`)
+    .catch((err) => {
+      winston.log('error', `Error while connecting to ${this.address}: ${err}`);
+      throw err;
+    });
   }
 
   /**

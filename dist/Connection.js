@@ -15,7 +15,6 @@ var Connection = (function (_super) {
         if (port === void 0) { port = 443; }
         _super.call(this);
         this.connected = false;
-        this.auto_reconnect = false;
         this.host = host;
         this.port = port;
         this.socket = new net.Socket({
@@ -45,17 +44,12 @@ var Connection = (function (_super) {
         });
         this.socket.on('error', function (err) {
             winston.log('error', "Error on connection to " + _this.address + ": " + err);
-            _this.auto_reconnect = false;
-            _this.emit('error', err);
+            _this.disconnect();
         });
         this.socket.on('close', function (had_error) {
             _this.connected = false;
             winston.log('info', "Connection to " + _this.address + " closed");
             _this.emit('close', had_error);
-            if (_this.auto_reconnect) {
-                winston.log('info', "Attempting to reconnect to " + _this.address);
-                _this.connect();
-            }
         });
     }
     Object.defineProperty(Connection.prototype, "address", {
@@ -71,9 +65,15 @@ var Connection = (function (_super) {
         this.port = port;
         winston.log('verbose', "Connecting to " + this.address);
         return new Promise(function (resolve, reject) {
-            _this.socket.connect(_this.port, _this.host, resolve);
+            _this.once('connect', resolve);
+            _this.socket.once('error', reject);
+            _this.socket.connect(_this.port, _this.host);
         })
-            .timeout(Connection.TIMEOUT, "timed out while connecting to server " + this.address);
+            .timeout(Connection.TIMEOUT, "timed out while connecting to server " + this.address)
+            .catch(function (err) {
+            winston.log('error', "Error while connecting to " + _this.address + ": " + err);
+            throw err;
+        });
     };
     Connection.prototype.disconnect = function () {
         var _this = this;

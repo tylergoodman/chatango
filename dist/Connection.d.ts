@@ -5,7 +5,6 @@ import Promise = require('bluebird');
 declare class Connection extends events.EventEmitter {
     socket: net.Socket;
     connected: boolean;
-    auto_reconnect: boolean;
     host: string;
     port: number;
     address: string;

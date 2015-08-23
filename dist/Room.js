@@ -26,9 +26,11 @@ var Room = (function (_super) {
         this.here_now = 0;
         this.moderators = new util.Set();
         this.users = {};
+        this.auto_reconnect = true;
         this._buffer = '';
         this._first_send = true;
         this._anonymous = false;
+        this._disconnecting = false;
         this._bold = false;
         this._italics = false;
         this._underline = false;
@@ -38,15 +40,19 @@ var Room = (function (_super) {
             this._anonymous = true;
         }
         this._history = new Message.Cache({
-            size: options && options.cache_size || void 0,
+            size: _.has(options, 'cache_size') ? options.cache_size : void 0,
         });
         this._connection = new Connection(this._getServer());
         this._connection.on('data', this._receiveData.bind(this));
-        this._connection.on('close', this._reset.bind(this));
+        this._connection.on('close', function () {
+            if (_this._disconnecting) {
+                return _this._reset();
+            }
+            _this._reconnect();
+        });
         this.on('error', function (err) {
             winston.log('error', err);
-            _this._reset();
-            throw err;
+            _this._reconnect();
         });
     }
     Object.defineProperty(Room.prototype, "bold", {
@@ -97,10 +103,23 @@ var Room = (function (_super) {
         enumerable: true,
         configurable: true
     });
+    Room.prototype._reconnect = function () {
+        var _this = this;
+        if (this.auto_reconnect) {
+            winston.log('info', "Reconnecting to room \"" + this.name + "\" in " + Room.RECONNECT_DELAY + "ms");
+            return Promise.delay(Room.RECONNECT_DELAY)
+                .then(function () {
+                _this._reset();
+                winston.log('info', "Reconnecting to room \"" + _this.name + "...\"");
+                return _this.connect();
+            });
+        }
+    };
     Room.prototype._reset = function () {
         this._stopPing();
         this._buffer = '';
         this._first_send = true;
+        this._disconnecting = false;
         return this;
     };
     Room.prototype._send = function (command) {
@@ -174,11 +193,13 @@ var Room = (function (_super) {
         var lnv = room_name.slice(6, 6 + _.min([room_name.length - 5, 3]));
         if (lnv) {
             lnv = parseInt(lnv, 36);
-            if (lnv < 1000)
+            if (lnv < 1000) {
                 lnv = 1000;
+            }
         }
-        else
+        else {
             lnv = 1000;
+        }
         var num = (fnv % lnv) / lnv;
         var maxnum = _.sum(tsweights.map(function (n) { return n[1]; }));
         var cumfreq = 0;
@@ -241,15 +262,19 @@ var Room = (function (_super) {
             _this._startPing();
             _this.emit('connect', _this);
             return _this;
+        })
+            .catch(function (err) {
+            winston.log('error', "Error while connecting to room \"" + _this.name + "\" " + err);
+            return _this;
         });
     };
     Room.prototype.disconnect = function () {
         var _this = this;
+        this._disconnecting = true;
         winston.log('verbose', "Leaving room \"" + this.name + "\" as user \"" + this.user.toString() + "\"");
         return this._connection.disconnect()
             .then(function () {
             winston.log('info', "Left room \"" + _this.name + "\" as user \"" + _this.user.toString() + "\"");
-            _this._reset();
             _this.emit('disconnect');
             return _this;
         });
@@ -548,6 +573,7 @@ var Room = (function (_super) {
         return message;
     };
     Room.TIMEOUT = 3000;
+    Room.RECONNECT_DELAY = 10000;
     return Room;
 })(events.EventEmitter);
 module.exports = Room;

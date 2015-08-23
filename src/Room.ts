@@ -93,6 +93,7 @@ class Room extends events.EventEmitter {
   here_now: number = 0; // number of people in the room (including anonymous/unnamed)
   moderators: util.Set<string> = new util.Set<string>(); // string array of moderator names. populated on connect (if we have the permission to see them)
   users: {[index: string]: User} = {};
+  auto_reconnect: boolean = true;
 
   private _connection: Connection;
   private _history: Message.Cache;
@@ -101,8 +102,10 @@ class Room extends events.EventEmitter {
   private _first_send: boolean = true;
   private _anonymous: boolean = false;
   private _ping: number;
+  private _disconnecting: boolean = false;
 
   private static TIMEOUT = 3000;
+  private static RECONNECT_DELAY = 10000;
 
   constructor(name: string, user: string | User = '', options? : Room.Options) {
     super();
@@ -115,19 +118,24 @@ class Room extends events.EventEmitter {
     }
 
     this._history = new Message.Cache({
-      size: options && options.cache_size || void 0,
+      size: _.has(options, 'cache_size') ? options.cache_size : void 0,
     });
 
     this._connection = new Connection(this._getServer());
 
     this._connection.on('data', this._receiveData.bind(this));
 
-    this._connection.on('close', this._reset.bind(this));
+    this._connection.on('close', () => {
+      if (this._disconnecting) {
+        return this._reset();
+      }
+      this._reconnect();
+    });
 
     this.on('error', (err) => {
       winston.log('error', err);
-      this._reset();
-      throw err;
+      this._reconnect();
+      // throw err;
     });
   }
 
@@ -171,10 +179,23 @@ class Room extends events.EventEmitter {
     this._underline = val;
   }
 
+  private _reconnect(): Promise<Room> {
+    if (this.auto_reconnect) {
+      winston.log('info', `Reconnecting to room "${this.name}" in ${Room.RECONNECT_DELAY}ms`);
+      return Promise.delay(Room.RECONNECT_DELAY)
+        .then(() => {
+          this._reset();
+          winston.log('info', `Reconnecting to room "${this.name}..."`);
+          return this.connect();
+        });
+    }
+  }
+
   private _reset(): Room {
     this._stopPing();
     this._buffer = '';
     this._first_send = true;
+    this._disconnecting = false;
     return this;
   }
 
@@ -266,11 +287,13 @@ class Room extends events.EventEmitter {
     var lnv: any = room_name.slice(6, 6 + _.min([room_name.length - 5, 3]));
     if (lnv) {
       lnv = parseInt(lnv, 36);
-      if (lnv < 1000)
+      if (lnv < 1000) {
         lnv = 1000;
+      }
     }
-    else
+    else {
       lnv = 1000;
+    }
 
     var num = (fnv % lnv) / lnv;
     var maxnum = _.sum(tsweights.map((n) => { return n[1]; }));
@@ -352,6 +375,11 @@ class Room extends events.EventEmitter {
         this._startPing();
         this.emit('connect', this);
         return this;
+      })
+      .catch((err) => {
+        winston.log('error', `Error while connecting to room "${this.name}" ${err}`);
+        return this;
+        // return this._reconnect();
       });
   }
 
@@ -361,11 +389,11 @@ class Room extends events.EventEmitter {
    * @fires disconnect
    */
   disconnect(): Promise<Room> {
+    this._disconnecting = true;
     winston.log('verbose', `Leaving room "${this.name}" as user "${this.user.toString()}"`);
     return this._connection.disconnect()
       .then(() => {
         winston.log('info', `Left room "${this.name}" as user "${this.user.toString()}"`);
-        this._reset();
         this.emit('disconnect');
         return this;
       });

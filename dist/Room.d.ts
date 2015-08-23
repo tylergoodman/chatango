@@ -17,6 +17,7 @@ declare class Room extends events.EventEmitter {
     users: {
         [index: string]: User;
     };
+    auto_reconnect: boolean;
     private _connection;
     private _history;
     private _last_message;
@@ -24,7 +25,9 @@ declare class Room extends events.EventEmitter {
     private _first_send;
     private _anonymous;
     private _ping;
+    private _disconnecting;
     private static TIMEOUT;
+    private static RECONNECT_DELAY;
     constructor(name: string, user?: string | User, options?: Room.Options);
     private _bold;
     bold: boolean;
@@ -32,6 +35,7 @@ declare class Room extends events.EventEmitter {
     italics: boolean;
     private _underline;
     underline: boolean;
+    private _reconnect();
     private _reset();
     private _send(command);
     private _receiveData(data);
