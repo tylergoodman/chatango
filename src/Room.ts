@@ -237,7 +237,7 @@ class Room extends events.EventEmitter {
       if (command === '') { // ping
         continue;
       }
-      winston.log('debug', `Received command from room "${this.name}": ${command}: ${args.join(',')}`);
+      winston.log('debug', `Received command from room "${this.name}": ${command}: ${args.join(':')}`);
       var handler = this[`__command__${command}`];
       if (handler === void 0) {
         winston.log('warn', `Received command that has no handler from room "${this.name}": <${command}>: ${args}`);
@@ -416,7 +416,7 @@ class Room extends events.EventEmitter {
     if (this.underline)
       content = `<u>${content}</u>`;
 
-    content.replace('\n', '<br/>');
+    content = content.replace('\n', '<br/>');
 
     var message;
     if (this.user instanceof User) {

@@ -6,7 +6,7 @@ var faker = require('faker');
 var winston = require('winston');
 winston.level = 'debug';
 
-var room = Chatango.joinRoom('ttttest', 'ttttestuser', 'asdf1234');
+var room = Chatango.joinRoom('streamerrant', 'ttttestuser', 'asdf1234');
 var user = room.user;
 
 room.on('message', function (message) {

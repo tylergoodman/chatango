@@ -151,7 +151,7 @@ var Room = (function (_super) {
             if (command === '') {
                 continue;
             }
-            winston.log('debug', "Received command from room \"" + this.name + "\": " + command + ": " + args.join(','));
+            winston.log('debug', "Received command from room \"" + this.name + "\": " + command + ": " + args.join(':'));
             var handler = this[("__command__" + command)];
             if (handler === void 0) {
                 winston.log('warn', "Received command that has no handler from room \"" + this.name + "\": <" + command + ">: " + args);
@@ -288,7 +288,7 @@ var Room = (function (_super) {
             content = "<i>" + content + "</i>";
         if (this.underline)
             content = "<u>" + content + "</u>";
-        content.replace('\n', '<br/>');
+        content = content.replace('\n', '<br/>');
         var message;
         if (this.user instanceof User) {
             var _a = this.user.style, nameColor = _a.nameColor, fontSize = _a.fontSize, textColor = _a.textColor, fontFamily = _a.fontFamily;
