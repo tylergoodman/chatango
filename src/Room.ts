@@ -416,7 +416,7 @@ class Room extends events.EventEmitter {
     if (this.underline)
       content = `<u>${content}</u>`;
 
-    content = content.replace('\n', '<br/>');
+    content = content.replace(/\n/g, '<br/>');
 
     var message;
     if (this.user instanceof User) {

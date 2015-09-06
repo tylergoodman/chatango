@@ -288,7 +288,7 @@ var Room = (function (_super) {
             content = "<i>" + content + "</i>";
         if (this.underline)
             content = "<u>" + content + "</u>";
-        content = content.replace('\n', '<br/>');
+        content = content.replace(/\n/g, '<br/>');
         var message;
         if (this.user instanceof User) {
             var _a = this.user.style, nameColor = _a.nameColor, fontSize = _a.fontSize, textColor = _a.textColor, fontFamily = _a.fontFamily;
