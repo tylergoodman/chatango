@@ -26,8 +26,8 @@ class Message {
   }
 
   static tokens = {
-    MESSAGE_PARSE: /^(?:<n(?:(?:\d{4})|((?:[a-fA-F0-9]{3}){1,2}))?\/>)?(?:<f x(\d{2})?((?:[a-fA-F0-9]{3}){1,2})?\=\"(\d+)?\">)?(.+)$/,
-    FORMAT: /(?:<([biu])>)(.+?)<\/\1>/
+    MESSAGE_PARSE: /^(?:<n(?:(?:\d{4})|((?:[a-fA-F0-9]{3}){1,2}))?\/>)?(?:<f x(\d{2})?((?:[a-fA-F0-9]{3}){1,2})?\=\"(\d+)?\">)?([\s\S]+)$/,
+    FORMAT: /(?:<([biu])>)([\s\S]+?)<\/\1>/
   }
 
   static parse(raw: string): Message {
