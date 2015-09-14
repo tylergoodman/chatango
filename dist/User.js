@@ -101,10 +101,15 @@ var User = (function (_super) {
                     return reject(new Error(response.statusCode + ": " + response.statusMessage));
                 }
                 winston.log('verbose', "Retrieved style for user \"" + _this.name + "\"");
-                var style = JSON.parse(body);
-                style.fontSize = Number(style.fontSize);
-                style.usebackground = Number(style.usebackground);
-                resolve(style);
+                try {
+                    var style = JSON.parse(body);
+                    style.fontSize = Number(style.fontSize);
+                    style.usebackground = Number(style.usebackground);
+                    resolve(style);
+                }
+                catch (err) {
+                    resolve(_this.style);
+                }
             });
         });
     };

@@ -24,7 +24,7 @@ import util = require('./util');
 /**
  * Message event
  * fired when the user has sent a message in a room
- * 
+ *
  * @event User#message
  * @param {Message} message - the message that was sent
  */
@@ -157,10 +157,15 @@ class User extends events.EventEmitter {
         }
         winston.log('verbose', `Retrieved style for user "${this.name}"`);
         // maybe fix this instead of sneaking it by the compiler later
-        var style = JSON.parse(body);
-        style.fontSize = Number(style.fontSize);
-        style.usebackground = Number(style.usebackground);
-        resolve(style);
+        try {
+          var style = JSON.parse(body);
+          style.fontSize = Number(style.fontSize);
+          style.usebackground = Number(style.usebackground);
+          resolve(style);
+        }
+        catch (err) {
+          resolve(this.style);
+        }
       });
     });
   }
@@ -342,9 +347,9 @@ class User extends events.EventEmitter {
     // last 4 digits of n_tag and id
     var n_tag = message.match(/^<n(\d{4})\/>/)[1].split('');
     var id = _id.slice(-4).split('');
-  
+
     var ret = [];
-  
+
     for (var i = 0; i < 4; i++) {
       // add each digit together
       var val = parseInt(n_tag[i], 10) + parseInt(id[i], 10);

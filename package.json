@@ -1,6 +1,6 @@
 {
   "name": "chatango",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "unofficial library for interacting with Chatango.com",
   "private": true,
   "main": "./dist/index.js",
@@ -20,15 +20,15 @@
   },
   "homepage": "https://github.com/tylergoodman/chatango",
   "devDependencies": {
-    "del": "^1.1.1",
+    "del": "^1.2.1",
     "faker": "^2.1.4",
     "gulp": "^3.8.11",
     "gulp-mocha": "^2.0.1",
-    "gulp-typescript": "^2.6.0",
+    "gulp-typescript": "^2.8.3",
     "merge2": "^0.3.5",
     "run-sequence": "^1.1.0",
     "should": "^6.0.1",
-    "typescript": "git://github.com/Microsoft/TypeScript"
+    "typescript": "git://github.com/Microsoft/TypeScript.git"
   },
   "dependencies": {
     "bluebird": "^2.9.25",

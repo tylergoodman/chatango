@@ -10,21 +10,21 @@ import Promise = require('bluebird');
  * wrapper for net.Socket
  */
 
-/** 
+/**
  * Events
  */
 
 /**
  * Connect event
  * fires when the socket indicates that we have connected to the server
- * 
+ *
  * @event Connection#connect
  */
 
 /**
  * Data event
  * fires when the socket returns data
- * 
+ *
  * @event Connection#data
  * @param {string} data - the date returned from the server on the connection
  */
@@ -32,35 +32,35 @@ import Promise = require('bluebird');
 /**
  * End event
  * fires when the socket receives a FIN packet from the server
- * 
+ *
  * @event Connection#end
  */
 
 /**
  * Timeout event
  * fires when the socket has received no data for TODO: finish this
- * 
+ *
  * @event Connection#timeout
  */
 
 /**
  * Drain event
  * fires when the socket buffer has been flushed completely
- * 
+ *
  * @event Connection#drain
  */
 
 /**
  * Error event
  * fires when the socket receives an error
- * 
+ *
  * @event Connection#error
  */
 
 /**
  * Close event
  * fires when the connection to the server has closed
- * 
+ *
  * @event Connection#close
  * @param {boolean} had_error - indicates that the server closed connection due to an error
  */

@@ -45,7 +45,7 @@ describe('User', function () {
       .getBackground()
       .then(function (background) {
         // console.log(background);
-  
+
         background.align.should.be.a.String.with.length(2).and.match(/^(tl|tr|bl|br)$/);
         background.ialp.should.be.a.Number.within(0, 100);
         background.tile.should.be.a.Number.within(0, 1);
@@ -54,7 +54,7 @@ describe('User', function () {
         background.useimg.should.be.a.Number.within(0, 1);
         background.hasrec.should.be.a.Number.within(0, 1);
         background.isvid.should.be.a.Number.within(0, 1);
-  
+
         done();
       })
       .catch(done);
@@ -65,7 +65,7 @@ describe('User', function () {
       .getStyle()
       .then(function (style) {
         // console.log(style);
-  
+
         style.nameColor.should.be.a.String.and.match(/^(.{0}|[0-9a-fA-F]{6})$/);
         style.textColor.should.be.a.String.and.match(/^(.{0}|[0-9a-fA-F]{6})$/);
         style.fontSize.should.be.a.Number.within(9, 22);
@@ -75,7 +75,7 @@ describe('User', function () {
         style.bold.should.be.Boolean;
         style.italics.should.be.Boolean;
         style.underline.should.be.Boolean;
-  
+
         done();
       })
       .catch(done);

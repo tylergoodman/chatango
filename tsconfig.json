@@ -6,5 +6,6 @@
     "outDir": "./dist",
     "removeComments": true,
     "declaration": true
-  }
+  },
+  "compileOnSave": false
 }

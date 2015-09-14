@@ -22,7 +22,7 @@ import util = require('./util');
 /**
  * Message event
  * fired when the Room receives a message
- * 
+ *
  * @event Room#message
  * @param {Message} message - the message that was received
  */
@@ -30,7 +30,7 @@ import util = require('./util');
 /**
  * Join event
  * fired when a user (temporary and registered) joins the room
- * 
+ *
  * @event Room#join
  * @param {string | User} user - the user that joined
  */
@@ -38,7 +38,7 @@ import util = require('./util');
 /**
  * Leave event
  * fired when a user (temporary and registered) leaves the room
- * 
+ *
  * @event Room#leave
  * @param {string | User} user - the user that left
  */
@@ -46,7 +46,7 @@ import util = require('./util');
 /**
  * Connect event
  * fired when we join the room
- * 
+ *
  * @event Room#connect
  * @param Room room - this room
  */
@@ -54,7 +54,7 @@ import util = require('./util');
 /**
  * Disconnect event
  * fired when we leave the room
- * 
+ *
  * @event Room#disconnect
  * @param Room room - this room
  */
@@ -62,14 +62,14 @@ import util = require('./util');
 /**
  * Spam Ban Warning event
  * fired when we are warned for sending messages that are too similar too quickly
- * 
+ *
  * @event Room#spam_ban_warning
  */
 
 /**
  * Flood Ban event
  * fired when we are flood banned
- * 
+ *
  * @event Room#flood_ban
  */
 
@@ -77,7 +77,7 @@ import util = require('./util');
  * Ban event
  * fired when someone in the room is banned
  * received only as moderator
- * 
+ *
  * @event Room#ban
  */
 
@@ -201,7 +201,7 @@ class Room extends events.EventEmitter {
 
   /**
    * Send a command to a room
-   * 
+   *
    * @param command - command with comma-delineated arguments, or an array of the command followed by its arguments
    */
   private _send(command: string | string[]): Room {
@@ -315,7 +315,7 @@ class Room extends events.EventEmitter {
 
   /**
    * Connect to a room
-   * 
+   *
    * @fires connect
    */
   connect(): Promise<Room> {
@@ -385,7 +385,7 @@ class Room extends events.EventEmitter {
 
   /**
    * Leave a room
-   * 
+   *
    * @fires disconnect
    */
   disconnect(): Promise<Room> {
@@ -401,7 +401,7 @@ class Room extends events.EventEmitter {
 
   /**
    * Send a message to the room
-   * 
+   *
    * @param content - the message content
    */
   message(content: string): Room {
@@ -441,7 +441,7 @@ class Room extends events.EventEmitter {
 
   /**
    * Delete a message
-   * 
+   *
    * @param message - the message object or the message ID of the message to delete
    */
   delete(message: string | Message): Room {
@@ -459,7 +459,7 @@ class Room extends events.EventEmitter {
 
   /**
    * Delete all messages by a user
-   * 
+   *
    * @param user - the user's ID, or a message sent by the user
    */
   deleteAll(user: Message | User.ID): Room {
@@ -476,7 +476,7 @@ class Room extends events.EventEmitter {
 
   /**
    * Ban a user
-   * 
+   *
    * @param user - the user's ID, or a message sent by the user
    */
   ban(user: Message | User.ID): Room {
@@ -493,7 +493,7 @@ class Room extends events.EventEmitter {
 
   /**
    * Unban a user
-   * 
+   *
    * @param user - the user's ID, or a message sent by the user
    */
   unban(user: Message | User.ID): Room {
