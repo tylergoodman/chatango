@@ -198,9 +198,9 @@ describe('Message', function () {
           'nameColor': 'a0a0a0',
         }
       });
-    Message.parse('<u><i><b>asdf</b></i></u>')
+    Message.parse('<u><i><b>asdf\n</b></i></u>')
       .should.eql({
-        'body': 'asdf',
+        'body': 'asdf\n',
         'style': {
           'bold': true,
           'italics': true,
