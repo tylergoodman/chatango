@@ -1,4 +1,3 @@
-/// <reference path="../typings/tsd.d.ts" />
 var _ = require('lodash');
 var Message = (function () {
     function Message() {

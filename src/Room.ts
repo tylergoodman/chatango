@@ -686,11 +686,10 @@ class Room extends events.EventEmitter {
         name, // name of the registered user
         None // always 'None'?
       ] = user_string.split(':');
-      name = name.toLowerCase();
-      var user = this.users[name];
+      var user = this.users[name.toLowerCase()];
       if (user === void 0) {
         user = new User(name);
-        this.users[name] = user;
+        this.users[name.toLowerCase()] = user;
         user.init();
         winston.log('debug', `First time seeing registered user "${name}"`);
       }
@@ -724,11 +723,10 @@ class Room extends events.EventEmitter {
       user = user_temporary.toLowerCase();
     }
     else {
-      user_registered = user_registered.toLowerCase();
-      user = this.users[user_registered];
+      user = this.users[user_registered.toLowerCase()];
       if (user === void 0) {
         user = new User(user_registered);
-        this.users[user_registered] = <User>user;
+        this.users[user_registered.toLowerCase()] = <User>user;
         winston.log('debug', `First time seeing registered user "${(<User>user).name}"`);
       }
     }

@@ -1,4 +1,3 @@
-/// <reference path="../typings/tsd.d.ts" />
 var winston = require('winston');
 winston.exitOnError = false;
 exports.Connection = require('./Connection');

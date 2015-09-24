@@ -1,4 +1,3 @@
-/// <reference path="../typings/tsd.d.ts" />
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -426,11 +425,10 @@ var Room = (function (_super) {
                 break;
             }
             var _a = user_string.split(':'), connection_id = _a[0], joined_at = _a[1], session_id = _a[2], name = _a[3], None = _a[4];
-            name = name.toLowerCase();
-            var user = this.users[name];
+            var user = this.users[name.toLowerCase()];
             if (user === void 0) {
                 user = new User(name);
-                this.users[name] = user;
+                this.users[name.toLowerCase()] = user;
                 user.init();
                 winston.log('debug', "First time seeing registered user \"" + name + "\"");
             }
@@ -449,11 +447,10 @@ var Room = (function (_super) {
             user = user_temporary.toLowerCase();
         }
         else {
-            user_registered = user_registered.toLowerCase();
-            user = this.users[user_registered];
+            user = this.users[user_registered.toLowerCase()];
             if (user === void 0) {
                 user = new User(user_registered);
-                this.users[user_registered] = user;
+                this.users[user_registered.toLowerCase()] = user;
                 winston.log('debug', "First time seeing registered user \"" + user.name + "\"");
             }
         }
