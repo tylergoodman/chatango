@@ -1,12 +1,12 @@
 /// <reference path="../typings/tsd.d.ts" />
 
-import events = require('events');
-import fs = require('fs');
-import request = require('request');
-import xml2js = require('xml2js');
-import Promise = require('bluebird');
-import winston = require('winston');
-import _ = require('lodash');
+import { EventEmitter } from 'events';
+import { ReadStream } from 'fs';
+import * as request from 'request';
+import * as xml2js from 'xml2js';
+import * as Promise from 'bluebird';
+import * as winston from 'winston';
+import { assign, transform } from 'lodash';
 
 import Message = require('./Message');
 import util = require('./util');
@@ -29,9 +29,7 @@ import util = require('./util');
  * @param {Message} message - the message that was sent
  */
 
-// todo - add ban/msgdel/allmsgdel
-
-class User extends events.EventEmitter {
+class User extends EventEmitter {
   name: string;
   password: string;
 
@@ -51,8 +49,6 @@ class User extends events.EventEmitter {
 
     this.name = name;
     this.password = password;
-//    this.cookies.setCookie(request.cookie('cookies_enabled.chatango.com=yes'), 'http://.chatango.com');
-//    this.cookies.setCookie(request.cookie('fph.chatango.com=http'), 'http://.chatango.com');
   }
 
   toString(): string {
@@ -116,27 +112,6 @@ class User extends events.EventEmitter {
         winston.log('info', `Authorized user "${this.name}"`);
         resolve();
       });
-//      request({
-//        url: 'http://chatango.com/login',
-//        method: 'POST',
-//        jar: this.cookies,
-//        form: {
-//          "user_id": this.username,
-//          "password": this.password,
-//          "storecookie": "on",
-//          "checkerrors": "yes"
-//        },
-//        headers: {
-//          'User-Agent': 'ChatangoJS'
-//        }
-//      }, (error, response, body) => {
-//        if (error) {
-//          winston.log('error', `Error while authenticating user ${this.username}: ${error}`);
-//          return reject(error);
-//        }
-//        winston.log('info', `Authentication successful: ${this.username}`);
-//        resolve();
-//      });
     });
   }
 
@@ -177,9 +152,9 @@ class User extends events.EventEmitter {
   setStyle(style: Message.Style = new Message.Style): Promise<Message.Style> {
     winston.log('debug', `Saving style for user "${this.name}"`);
 
-    style = _.extend<{}, Message.Style, Message.Style, {}, Message.Style>(this.style, style);
+    style = assign<{}, Message.Style, Message.Style, {}, Message.Style>(this.style, style);
 
-    var data = _.transform<Message.Style, {}>(style, (result, value, key) => {
+    var data = transform<Message.Style, {}>(style, (result, value, key) => {
       result[key] = String(value);
     });
 
@@ -188,7 +163,7 @@ class User extends events.EventEmitter {
         url: 'http://chatango.com/updatemsgstyles',
         method: 'POST',
         jar: this._cookies,
-        formData: _.extend({
+        formData: assign({
           'lo': this.name,
           'p': this.password,
         }, data),
@@ -259,14 +234,14 @@ class User extends events.EventEmitter {
     winston.log('silly', `Saving background for user "${this.name}"`);
 
     // how do I get this to infer correctly
-    background = _.extend<{}, Message.Background, Message.Background, {}, Message.Background>(this.background, background);
+    background = assign<{}, Message.Background, Message.Background, {}, Message.Background>(this.background, background);
 
     return new Promise<Message.Background>((resolve, reject) => {
       request({
         url: 'http://chatango.com/updatemsgbg',
         method: 'POST',
         jar: this._cookies,
-        form: _.extend(background, {
+        form: assign(background, {
           'lo': this.name,
           'p': this.password
         }),
@@ -293,7 +268,7 @@ class User extends events.EventEmitter {
    * Set the background image for this User
    * must be authenticated
    */
-  setBackgroundImage(stream: fs.ReadStream): Promise<void> {
+  setBackgroundImage(stream: ReadStream): Promise<void> {
     winston.log('silly', `Saving background image for user "${this.name}"`);
     return new Promise<void>((resolve, reject) => {
       request({

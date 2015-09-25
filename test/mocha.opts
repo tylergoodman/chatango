@@ -1,0 +1,6 @@
+--require should
+--compilers coffee:coffee-script/register
+--recursive
+--colors
+--bail
+--timeout 10000

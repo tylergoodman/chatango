@@ -1,11 +1,40 @@
 {
-  "compilerOptions": {
-    "target": "es5",
-    "module": "commonjs",
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "removeComments": true,
-    "declaration": true
-  },
-  "compileOnSave": false
+    "version": "1.5.0-beta",
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "isolatedModules": false,
+        "jsx": "react",
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "declaration": false,
+        "noImplicitAny": false,
+        "removeComments": true,
+        "noLib": false,
+        "preserveConstEnums": true,
+        "suppressImplicitAnyIndexErrors": true
+    },
+    "filesGlob": [
+        "./**/*.ts",
+        "./**/*.tsx",
+        "!./node_modules/**/*"
+    ],
+    "files": [
+        "./lib/Connection.ts",
+        "./lib/Message.ts",
+        "./lib/Room.ts",
+        "./lib/User.ts",
+        "./lib/index.ts",
+        "./lib/util.ts",
+        "./typings/bluebird/bluebird.d.ts",
+        "./typings/form-data/form-data.d.ts",
+        "./typings/lodash/lodash.d.ts",
+        "./typings/mocha/mocha.d.ts",
+        "./typings/node/node.d.ts",
+        "./typings/request/request.d.ts",
+        "./typings/tsd.d.ts",
+        "./typings/winston/winston.d.ts",
+        "./typings/xml2js/xml2js.d.ts"
+    ]
 }

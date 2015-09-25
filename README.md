@@ -8,3 +8,5 @@ thanks to [Coco.py](https://github.com/Sorch/coco) and [ch.py](https://github.co
 
 todo:
  - flood/spam ban auto-protection
+
+ - make logger.ts

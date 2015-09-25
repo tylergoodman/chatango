@@ -6,28 +6,28 @@
   "bundle": "typings/tsd.d.ts",
   "installed": {
     "winston/winston.d.ts": {
-      "commit": "066819c65ff561ca109955e0b725c253e243f0a2"
+      "commit": "32029fcb4e1a3ef8968711b545d77b584435729d"
     },
     "lodash/lodash.d.ts": {
-      "commit": "066819c65ff561ca109955e0b725c253e243f0a2"
+      "commit": "32029fcb4e1a3ef8968711b545d77b584435729d"
     },
     "form-data/form-data.d.ts": {
-      "commit": "066819c65ff561ca109955e0b725c253e243f0a2"
+      "commit": "32029fcb4e1a3ef8968711b545d77b584435729d"
     },
     "xml2js/xml2js.d.ts": {
-      "commit": "066819c65ff561ca109955e0b725c253e243f0a2"
+      "commit": "32029fcb4e1a3ef8968711b545d77b584435729d"
     },
     "mocha/mocha.d.ts": {
-      "commit": "066819c65ff561ca109955e0b725c253e243f0a2"
+      "commit": "32029fcb4e1a3ef8968711b545d77b584435729d"
     },
     "request/request.d.ts": {
-      "commit": "066819c65ff561ca109955e0b725c253e243f0a2"
+      "commit": "32029fcb4e1a3ef8968711b545d77b584435729d"
     },
     "bluebird/bluebird.d.ts": {
-      "commit": "066819c65ff561ca109955e0b725c253e243f0a2"
+      "commit": "32029fcb4e1a3ef8968711b545d77b584435729d"
     },
     "node/node.d.ts": {
-      "commit": "066819c65ff561ca109955e0b725c253e243f0a2"
+      "commit": "32029fcb4e1a3ef8968711b545d77b584435729d"
     }
   }
 }
