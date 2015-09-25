@@ -472,7 +472,7 @@ var Room = (function (_super) {
             if (user instanceof User) {
                 user._connection_ids.delete(connection_id);
                 if (user._connection_ids.length === 0) {
-                    delete this.users[user.name];
+                    delete this.users[user.name.toLowerCase()];
                     winston.log('info', "Registered user \"" + user.name + "\" left room \"" + this.name + "\"");
                 }
             }

@@ -750,7 +750,7 @@ class Room extends events.EventEmitter {
       if (user instanceof User) {
         (<User>user)._connection_ids.delete(connection_id);
         if ((<User>user)._connection_ids.length === 0) { // announce if the registered user has completely left the room (ie. isn't in the room in another tab, etc..)
-          delete this.users[(<User>user).name];
+          delete this.users[(<User>user).name.toLowerCase()];
           winston.log('info', `Registered user "${(<User>user).name}" left room "${this.name}"`);
         }
       }
