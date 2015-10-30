@@ -253,7 +253,13 @@ var User = (function (_super) {
         return request(this.ENDPOINT + "/thumb.jpg");
     };
     User.parseAnonName = function (message, _id) {
-        var n_tag = message.match(/^<n(\d{4})\/>/)[1].split('');
+        var n_tag;
+        try {
+            n_tag = message.match(/^<n(\d{4})\/>/)[1].split('');
+        }
+        catch (e) {
+            return '';
+        }
         var id = _id.slice(-4).split('');
         var ret = [];
         for (var i = 0; i < 4; i++) {
