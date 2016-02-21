@@ -1,11 +1,49 @@
 {
-  "compilerOptions": {
-    "target": "es5",
-    "module": "commonjs",
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "removeComments": true,
-    "declaration": true
-  },
-  "compileOnSave": false
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "isolatedModules": false,
+        "jsx": "react",
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "declaration": true,
+        "noImplicitAny": false,
+        "removeComments": true,
+        "noLib": false,
+        "preserveConstEnums": true,
+        "suppressImplicitAnyIndexErrors": true
+    },
+    "filesGlob": [
+        "**/*.ts",
+        "**/*.tsx",
+        "!node_modules/**",
+        "!typings-old/**",
+        "!typings/browser/**",
+        "!typings/browser.d.ts",
+        "node_modules/typescript/lib/lib.core.es6.d.ts"
+    ],
+    "compileOnSave": true,
+    "buildOnSave": false,
+    "files": [
+        "lib/index.d.ts",
+        "lib/index.ts",
+        "lib/Message.d.ts",
+        "lib/Message.ts",
+        "lib/Room.d.ts",
+        "lib/Room.ts",
+        "lib/User.d.ts",
+        "lib/User.ts",
+        "typings/main.d.ts",
+        "typings/main/ambient/lodash/lodash.d.ts",
+        "typings/main/ambient/node/node.d.ts",
+        "typings/main/ambient/request/request.d.ts",
+        "typings/main/ambient/xml2js/xml2js.d.ts",
+        "typings/main/definitions/bluebird/bluebird.d.ts",
+        "typings/main/definitions/debug/debug.d.ts",
+        "node_modules/typescript/lib/lib.core.es6.d.ts"
+    ],
+    "atom": {
+        "rewriteTsconfig": true
+    }
 }

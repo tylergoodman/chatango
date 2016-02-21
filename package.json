@@ -3,13 +3,14 @@
   "version": "1.0.7",
   "description": "unofficial library for interacting with Chatango.com",
   "private": true,
-  "main": "./dist/index.js",
+  "main": "./lib/index.js",
+  "typings": "./lib/index.d.ts",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "./node_modules/.bin/gulp test",
-    "build": "./node_modules/.bin/gulp build"
+    "test": "mocha --colors --bail --timeout 10000",
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
@@ -19,32 +20,18 @@
     "url": "https://github.com/tylergoodman/chatango/issues"
   },
   "homepage": "https://github.com/tylergoodman/chatango",
-  "devDependencies": {
-    "del": "^1.2.1",
-    "faker": "^2.1.4",
-    "gulp": "^3.8.11",
-    "gulp-mocha": "^2.0.1",
-    "gulp-typescript": "^2.8.3",
-    "merge2": "^0.3.5",
-    "run-sequence": "^1.1.0",
-    "should": "^6.0.1",
-    "typescript": "git://github.com/Microsoft/TypeScript.git"
-  },
   "dependencies": {
-    "bluebird": "^2.9.25",
-    "form-data": "git://github.com/tylergoodman/node-form-data",
-    "lodash": "^3.8.0",
-    "request": "^2.55.0",
-    "winston": "^1.0.0",
-    "xml2js": "^0.4.8"
+    "bluebird": "^3.3.1",
+    "debug": "^2.2.0",
+    "lodash": "^4.5.0",
+    "request": "^2.69.0",
+    "xml2js": "^0.4.16"
   },
-  "typescript": {
-    "definitions": [
-      "dist/index.d.ts",
-      "dist/Connnection.d.ts",
-      "dist/Message.d.ts",
-      "dist/Room.d.ts",
-      "dist/User.d.ts"
-    ]
+  "devDependencies": {
+    "dotenv": "^2.0.0",
+    "faker": "^3.0.1",
+    "mocha": "^2.4.5",
+    "should": "^8.2.2",
+    "typescript": "next"
   }
 }

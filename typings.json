@@ -1,0 +1,12 @@
+{
+  "ambientDependencies": {
+    "lodash": "github:DefinitelyTyped/DefinitelyTyped/lodash/lodash.d.ts#c8630523ef2ee3fb42fe65cc17af5b1b56e611bc",
+    "node": "github:DefinitelyTyped/DefinitelyTyped/node/node.d.ts#366b936e62a6244a15f011e0ee0559b903d1dd65",
+    "request": "github:DefinitelyTyped/DefinitelyTyped/request/request.d.ts#90c7b5653c973cbc8c568ba33c8a04fb478525ee",
+    "xml2js": "github:DefinitelyTyped/DefinitelyTyped/xml2js/xml2js.d.ts#7304e0770d53762f89af7fcf14517d5f45a04cc2"
+  },
+  "dependencies": {
+    "bluebird": "github:typed-typings/npm-bluebird#524d5cc66654fe7c8dcbccf90faeaa70588853a0",
+    "debug": "github:typed-typings/npm-debug#0e398cb21de268744dd048a11461be5c13230bad"
+  }
+}
