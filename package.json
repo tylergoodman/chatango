@@ -32,6 +32,6 @@
     "faker": "^3.0.1",
     "mocha": "^2.4.5",
     "should": "^8.2.2",
-    "typescript": "next"
+    "typescript": "^1.9.0-dev.20160221"
   }
 }
