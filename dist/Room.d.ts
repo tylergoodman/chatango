@@ -36,7 +36,7 @@ export declare class Room extends EventEmitter implements RoomOptions {
     private static PORT;
     private static COMMAND_PREFIX;
     private static DEFAULT_OPTIONS;
-    identifier: string;
+    readonly identifier: string;
     static getHostname(room_name: string): string;
     constructor(name: string, user?: User, options?: RoomOptions);
     private _initSocket();

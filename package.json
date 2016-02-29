@@ -1,16 +1,16 @@
 {
   "name": "chatango",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "unofficial library for interacting with Chatango.com",
   "private": true,
-  "main": "./lib/index.js",
-  "typings": "./lib/index.d.ts",
+  "main": "./dist/index.js",
+  "typings": "./dist/index.d.ts",
   "directories": {
     "test": "test"
   },
   "scripts": {
     "test": "mocha --colors --bail --timeout 10000",
-    "build": "tsc"
+    "build": "rm -rf ./dist && tsc"
   },
   "repository": {
     "type": "git",

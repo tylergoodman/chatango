@@ -432,7 +432,7 @@ export class Room extends EventEmitter implements RoomOptions {
       return this._userlist_get();
     })
     .then(() => {
-      return this.user._getData();
+      return this.user._inited;
     })
     .then(() => {
       if (this.user.style.stylesOn) {
@@ -815,7 +815,6 @@ export class Room extends EventEmitter implements RoomOptions {
       if (user === undefined) {
         user = new User(name);
         this.users[user.name] = user;
-        user._getData();
         debug(`First time seeing registered user "${user}"@${this.name}`);
       }
       user._connection_ids.add(connection_id);
@@ -860,7 +859,6 @@ export class Room extends EventEmitter implements RoomOptions {
       if (user === undefined) {
         user = new User(name);
         this.users[user.name] = user;
-        user._getData();
       }
       user._connection_ids.add(connection_id);
       user.joined_at = parseFloat(joined_at);
@@ -1049,7 +1047,6 @@ export class Room extends EventEmitter implements RoomOptions {
     if (user === undefined) {
       user = new User(name);
       this.users[user.name] = user;
-      user._getData();
     }
     user.id = user_id;
     user.ip = user_ip;

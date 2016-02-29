@@ -83,6 +83,17 @@ export interface StyleAPIGet {
   italics: boolean;
   underline: boolean;
 }
+export interface StylePartial {
+  stylesOn?: boolean;
+  fontFamily?: number;
+  fontSize?: number;
+  usebackground?: number;
+  textColor?: string;
+  nameColor?: string;
+  bold?: boolean;
+  italics?: boolean;
+  underline?: boolean;
+}
 export class Style {
   stylesOn: boolean; // whether these styles are shown or not
   fontFamily: number; // [0..8], the enumerated font face list
@@ -119,6 +130,30 @@ Style.prototype.bold = false;
 Style.prototype.italics = false;
 Style.prototype.underline = false;
 
+export interface BackgroundAPIGet {
+  bgi: {
+    $: {
+      align: string,
+      bgalp: string,
+      bgc: string,
+      hasrec: string,
+      ialp: string,
+      isvid: string,
+      tile: string,
+      useimg: string,
+    }
+  }
+}
+export interface BackgroundPartial {
+  align?: string;
+  ialp?: number;
+  tile?: number;
+  bgalp?: number;
+  bgc?: string;
+  useimg?: number;
+  hasrec?: number;
+  isvid?: number;
+}
 export class Background {
   align: string; // [tl, tr, bl, br], positioning of image
   ialp: number; // [0..100], alpha of the image
@@ -151,21 +186,6 @@ Background.prototype.bgc = '';
 Background.prototype.useimg = 0;
 Background.prototype.hasrec = 0;
 Background.prototype.isvid = 0;
-
-export interface BackgroundAPIGet {
-  bgi: {
-    $: {
-      align: string,
-      bgalp: string,
-      bgc: string,
-      hasrec: string,
-      ialp: string,
-      isvid: string,
-      tile: string,
-      useimg: string,
-    }
-  }
-}
 
 export enum Font {
   Arial,

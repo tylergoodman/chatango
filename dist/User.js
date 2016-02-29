@@ -31,7 +31,7 @@ var User = (function (_super) {
         this.password = password;
         if (this.password && this.name) {
             this.type = UserTypes.Regi;
-            this._getData = this._getDataRegistered;
+            this._init = this._initRegistered;
         }
         else if (this.name) {
             this.type = UserTypes.Temp;
@@ -41,10 +41,18 @@ var User = (function (_super) {
         }
         this.style = new Message_1.Style();
         this.background = new Message_1.Background();
+        this._inited = this._init();
     }
     Object.defineProperty(User.prototype, "ENDPOINT", {
         get: function () {
             return "http://ust.chatango.com/profileimg/" + this.name.charAt(0) + "/" + this.name.charAt(1) + "/" + this.name;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(User.prototype, "is_inited", {
+        get: function () {
+            return this._inited.isFulfilled();
         },
         enumerable: true,
         configurable: true
@@ -70,16 +78,16 @@ var User = (function (_super) {
     User.prototype.toString = function () {
         return this.name;
     };
-    User.prototype._getDataRegistered = function () {
+    User.prototype._initRegistered = function () {
         var _this = this;
-        return this.getStyle()
+        return this._inited = this._getStyle()
             .catch(function (err) {
             error("Error fetching style data for " + _this.name + ", using default.");
             return _this.style;
         })
             .then(function (style) {
             _this.style = style;
-            return _this.getBackground();
+            return _this._getBackground();
         })
             .catch(function (err) {
             error("Error fetching background data for " + _this.name + ", using default.");
@@ -90,16 +98,16 @@ var User = (function (_super) {
             if (_this.password === undefined) {
                 return;
             }
-            return _this.authorize();
+            return _this._authorize();
         })
             .then(function () {
             log("Initialized " + _this.name);
         });
     };
-    User.prototype._getData = function () {
-        return Promise.resolve();
+    User.prototype._init = function () {
+        return this._inited = Promise.resolve();
     };
-    User.prototype.authorize = function () {
+    User.prototype._authorize = function () {
         var _this = this;
         debug("Authorizing " + this.name);
         return new Promise(function (resolve, reject) {
@@ -135,6 +143,13 @@ var User = (function (_super) {
     };
     User.prototype.getStyle = function () {
         var _this = this;
+        if (this.is_inited) {
+            return Promise.resolve(this.style);
+        }
+        return this._inited.then(function () { return _this.style; });
+    };
+    User.prototype._getStyle = function () {
+        var _this = this;
         debug("Getting style for " + this.name);
         return new Promise(function (resolve, reject) {
             request(_this.ENDPOINT + "/msgstyles.json", function (err, response, body) {
@@ -162,46 +177,59 @@ var User = (function (_super) {
         });
     };
     User.prototype.setStyle = function (style) {
+        debug("Setting style for " + this.name);
+        lodash_1.assign(this.style, style);
+        return this;
+    };
+    User.prototype.saveStyle = function (style) {
         var _this = this;
-        debug("Saving style for " + this.name);
-        if (style === undefined) {
-            style = this.style;
-        }
-        else {
-            lodash_1.defaults(style, this.style);
-        }
-        var data = {};
-        for (var key in style) {
-            data[key] = String(style[key]);
-        }
-        return new Promise(function (resolve, reject) {
-            request({
-                url: 'http://chatango.com/updatemsgstyles',
-                method: 'POST',
-                jar: _this._cookies,
-                formData: lodash_1.assign(data, {
-                    'lo': _this.name,
-                    'p': _this.password,
-                }),
-                headers: {
-                    'User-Agent': 'ChatangoJS',
-                }
-            }, function (err, response, body) {
-                if (err) {
-                    error("Error while saving style for " + _this.name + ": " + err);
-                    return reject(err);
-                }
-                if (response.statusCode !== 200) {
-                    error("Error while saving style for " + _this.name + ": " + response.statusMessage);
-                    return reject(new Error(response.statusCode + ": " + response.statusMessage));
-                }
-                log("Saved style for " + _this.name);
-                _this.style = style;
-                resolve(style);
+        return this._inited.then(function () {
+            debug("Saving style for " + _this.name);
+            if (_this.type !== User.Types.Regi) {
+                throw new TypeError("Tried to save style as a non-registered User: " + _this.name);
+            }
+            if (style !== undefined) {
+                _this.setStyle(style);
+            }
+            var data = {};
+            for (var key in _this.style) {
+                data[key] = String(_this.style[key]);
+            }
+            return new Promise(function (resolve, reject) {
+                request({
+                    url: 'http://chatango.com/updatemsgstyles',
+                    method: 'POST',
+                    jar: _this._cookies,
+                    formData: lodash_1.assign(data, {
+                        'lo': _this.name,
+                        'p': _this.password,
+                    }),
+                    headers: {
+                        'User-Agent': 'ChatangoJS',
+                    }
+                }, function (err, response, body) {
+                    if (err) {
+                        error("Error while saving style for " + _this.name + ": " + err);
+                        return reject(err);
+                    }
+                    if (response.statusCode !== 200) {
+                        error("Error while saving style for " + _this.name + ": " + response.statusMessage);
+                        return reject(new Error(response.statusCode + ": " + response.statusMessage));
+                    }
+                    log("Saved style for " + _this.name);
+                    resolve(_this.style);
+                });
             });
         });
     };
     User.prototype.getBackground = function () {
+        var _this = this;
+        if (this.is_inited) {
+            return Promise.resolve(this.background);
+        }
+        return this._inited.then(function () { return _this.background; });
+    };
+    User.prototype._getBackground = function () {
         var _this = this;
         debug("Getting background for " + this.name);
         return new Promise(function (resolve, reject) {
@@ -237,68 +265,76 @@ var User = (function (_super) {
         });
     };
     User.prototype.setBackground = function (background) {
+        debug("Setting background for " + this.name);
+        lodash_1.assign(this.background, background);
+        return this;
+    };
+    User.prototype.saveBackground = function (background) {
         var _this = this;
-        debug("Saving background for " + this.name);
-        if (background === undefined) {
-            background = this.background;
-        }
-        else {
-            lodash_1.defaults(background, this.background);
-        }
-        return new Promise(function (resolve, reject) {
-            request({
-                url: 'http://chatango.com/updatemsgbg',
-                method: 'POST',
-                jar: _this._cookies,
-                form: lodash_1.assign(background, {
-                    'lo': _this.name,
-                    'p': _this.password
-                }),
-                headers: {
-                    'User-Agent': 'ChatangoJS'
-                }
-            }, function (err, response, body) {
-                if (err) {
-                    error("Error while saving background for " + _this.name + ": " + err);
-                    return reject(err);
-                }
-                if (response.statusCode !== 200) {
-                    error("Error while saving background for " + _this.name + ": " + response.statusMessage);
-                    return reject(new Error(response.statusCode + ": " + response.statusMessage));
-                }
-                log("Saved background for " + _this.name);
-                _this.background = background;
-                resolve(background);
+        return this._inited.then(function () {
+            debug("Saving background for " + _this.name);
+            if (_this.type !== User.Types.Regi) {
+                throw new TypeError("Tried to save background style as a non-registered User: " + _this.name);
+            }
+            if (background !== undefined) {
+                _this.setBackground(background);
+            }
+            return new Promise(function (resolve, reject) {
+                request({
+                    url: 'http://chatango.com/updatemsgbg',
+                    method: 'POST',
+                    jar: _this._cookies,
+                    form: lodash_1.assign({
+                        'lo': _this.name,
+                        'p': _this.password
+                    }, _this.background),
+                    headers: {
+                        'User-Agent': 'ChatangoJS'
+                    }
+                }, function (err, response, body) {
+                    if (err) {
+                        error("Error while saving background for " + _this.name + ": " + err);
+                        return reject(err);
+                    }
+                    if (response.statusCode !== 200) {
+                        error("Error while saving background for " + _this.name + ": " + response.statusMessage);
+                        return reject(new Error(response.statusCode + ": " + response.statusMessage));
+                    }
+                    log("Saved background for " + _this.name);
+                    resolve(_this.background);
+                });
             });
         });
     };
-    User.prototype.setBackgroundImage = function (stream) {
+    User.prototype.saveBackgroundImage = function (stream) {
         var _this = this;
         debug("Saving background image for " + this.name);
-        return new Promise(function (resolve, reject) {
-            request({
-                url: 'http://chatango.com/updatemsgbg',
-                method: 'POST',
-                jar: _this._cookies,
-                headers: {
-                    'User-Agent': 'ChatangoJS'
-                },
-                formData: {
-                    'lo': _this.name,
-                    'p': _this.password,
-                    'Filedata': stream
-                }
-            }, function (err, response, body) {
-                if (err) {
-                    error("Error while saving background image for " + _this.name + ": " + err);
-                    return reject(err);
-                }
-                if (response.statusCode !== 200) {
-                    error("Error while saving background for " + _this.name + ": " + response.statusMessage + " => Are you authenticated?");
-                    return reject(new Error(response.statusCode + ": " + response.statusMessage));
-                }
-                log("Saved background image for " + _this.name);
-                resolve();
+        return this._inited.then(function () {
+            return new Promise(function (resolve, reject) {
+                request({
+                    url: 'http://chatango.com/updatemsgbg',
+                    method: 'POST',
+                    jar: _this._cookies,
+                    headers: {
+                        'User-Agent': 'ChatangoJS'
+                    },
+                    formData: {
+                        'lo': _this.name,
+                        'p': _this.password,
+                        'Filedata': stream
+                    }
+                }, function (err, response, body) {
+                    if (err) {
+                        error("Error while saving background image for " + _this.name + ": " + err);
+                        return reject(err);
+                    }
+                    if (response.statusCode !== 200) {
+                        error("Error while saving background for " + _this.name + ": " + response.statusMessage + " => Are you authenticated?");
+                        return reject(new Error(response.statusCode + ": " + response.statusMessage));
+                    }
+                    log("Saved background image for " + _this.name);
+                    resolve();
+                });
             });
         });
     };
@@ -309,10 +345,10 @@ var User = (function (_super) {
         return request(this.ENDPOINT + "/thumb.jpg");
     };
     User.getStyle = function (username) {
-        return new User(username).getStyle();
+        return new User(username)._getStyle();
     };
     User.getBackground = function (username) {
-        return new User(username).getBackground();
+        return new User(username)._getBackground();
     };
     User.getBackgroundImage = function (username) {
         return new User(username).getBackgroundImage();

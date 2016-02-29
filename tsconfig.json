@@ -12,7 +12,9 @@
         "removeComments": true,
         "noLib": false,
         "preserveConstEnums": true,
-        "suppressImplicitAnyIndexErrors": true
+        "suppressImplicitAnyIndexErrors": true,
+        "outDir": "./dist",
+        "rootDir": "./dist"
     },
     "filesGlob": [
         "**/*.ts",
@@ -26,14 +28,10 @@
     "compileOnSave": true,
     "buildOnSave": false,
     "files": [
-        "lib/index.d.ts",
-        "lib/index.ts",
-        "lib/Message.d.ts",
-        "lib/Message.ts",
-        "lib/Room.d.ts",
-        "lib/Room.ts",
-        "lib/User.d.ts",
-        "lib/User.ts",
+        "src/index.ts",
+        "src/Message.ts",
+        "src/Room.ts",
+        "src/User.ts",
         "typings/main.d.ts",
         "typings/main/ambient/lodash/lodash.d.ts",
         "typings/main/ambient/node/node.d.ts",

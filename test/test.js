@@ -59,7 +59,8 @@ describe('User', function () {
 
   it('authorize', function (done) {
     var user = new User(USERNAME, PASSWORD);
-    user.authorize()
+    // happens automatically now
+    user._inited
       .then(function () {
         var cookies = user._cookies.getCookies('http://st.chatango.com');
         // debug(cookies);
@@ -73,15 +74,21 @@ describe('User', function () {
       .catch(done);
   });
 
-  it('set style', function (done) {
+  it('set style', function () {
     var user = new User(USERNAME, PASSWORD);
     var new_name_color = hexColor();
-    user.authorize()
-      .then(function () {
-        return user.setStyle({
-          nameColor: new_name_color
-        });
-      })
+    user.setStyle({
+      nameColor: new_name_color,
+    });
+    user.style.nameColor.should.equal(new_name_color);
+  });
+
+  it('save style', function (done) {
+    var user = new User(USERNAME, PASSWORD);
+    var new_name_color = hexColor();
+    user.saveStyle({
+      nameColor: new_name_color
+    })
       .then(function (style) {
         user.style.should.containEql(style);
         style.should.have.property('nameColor', new_name_color);
@@ -90,15 +97,21 @@ describe('User', function () {
       .catch(done);
   });
 
-  it('set background', function (done) {
+  it('set background', function () {
     var user = new User(USERNAME, PASSWORD);
     var new_bgc = hexColor();
-    user.authorize()
-      .then(function () {
-        return user.setBackground({
-          bgc: new_bgc
-        });
-      })
+    user.setBackground({
+      bgc: new_bgc
+    })
+    user.background.bec.should.equal(new_bgc);
+  });
+
+  it('save background', function (done) {
+    var user = new User(USERNAME, PASSWORD);
+    var new_bgc = hexColor();
+    user.saveBackground({
+      bgc: new_bgc
+    })
       .then(function (background) {
         user.background.should.containEql(background);
         background.should.have.property('bgc', new_bgc);
@@ -107,13 +120,10 @@ describe('User', function () {
       .catch(done);
   });
 
-  it('set background image', function (done) {
+  it('save background image', function (done) {
     var user = new User(USERNAME, PASSWORD);
     var file = fs.createReadStream('./test/Cute_Red_Panda_1152x2048.jpg');
-    user.authorize()
-      .then(function () {
-        return user.setBackgroundImage(file);
-      })
+    user.saveBackgroundImage(file)
       .then(function () {
         done();
       })
@@ -126,7 +136,6 @@ describe('User', function () {
   });
 
 });
-
 
 describe('Message', function () {
 

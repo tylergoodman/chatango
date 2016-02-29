@@ -245,7 +245,7 @@ var Room = (function (_super) {
             return _this._userlist_get();
         })
             .then(function () {
-            return _this.user._getData();
+            return _this.user._inited;
         })
             .then(function () {
             if (_this.user.style.stylesOn) {
@@ -459,7 +459,6 @@ var Room = (function (_super) {
             if (user === undefined) {
                 user = new User_1.default(name_3);
                 this.users[user.name] = user;
-                user._getData();
                 debug("First time seeing registered user \"" + user + "\"@" + this.name);
             }
             user._connection_ids.add(connection_id);
@@ -484,7 +483,6 @@ var Room = (function (_super) {
             if (user === undefined) {
                 user = new User_1.default(name);
                 this.users[user.name] = user;
-                user._getData();
             }
             user._connection_ids.add(connection_id);
             user.joined_at = parseFloat(joined_at);
@@ -580,7 +578,6 @@ var Room = (function (_super) {
         if (user === undefined) {
             user = new User_1.default(name);
             this.users[user.name] = user;
-            user._getData();
         }
         user.id = user_id;
         user.ip = user_ip;

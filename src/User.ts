@@ -11,7 +11,7 @@ const warn = Debug('chatango:User:warn');
 const error = Debug('chatango:User:error');
 const debug = Debug('chatango:User:debug');
 
-import { Style, Background, BackgroundAPIGet } from './Message';
+import { Style, StylePartial, Background, BackgroundPartial, BackgroundAPIGet } from './Message';
 
 /**
  * User class
@@ -40,18 +40,24 @@ export class User extends EventEmitter {
   name: string;
   password: string;
   type: UserTypes;
-  style: Style;
-  background: Background;
   id: string;
   ip: string;
   joined_at: number; // most recent server join time
 
+  style: Style;
+  background: Background;
+
   // Internals
   _connection_ids: Set<string> = new Set<string>();
+  _inited: Promise<void>;
 
   private _cookies: request.CookieJar = request.jar();
   get ENDPOINT(): string {
     return `http://ust.chatango.com/profileimg/${this.name.charAt(0)}/${this.name.charAt(1)}/${this.name}`;
+  }
+
+  get is_inited(): boolean {
+    return this._inited.isFulfilled();
   }
 
   static Types = UserTypes;
@@ -92,7 +98,7 @@ export class User extends EventEmitter {
 
     if (this.password && this.name) {
       this.type = UserTypes.Regi;
-      this._getData = this._getDataRegistered;
+      this._init = this._initRegistered;
     }
     else if (this.name) {
       this.type = UserTypes.Temp;
@@ -103,6 +109,8 @@ export class User extends EventEmitter {
 
     this.style = new Style();
     this.background = new Background();
+
+    this._inited = this._init();
     // this._cookies.setCookie(request.cookie('cookies_enabled.chatango.com=yes'), 'http://chatango.com');
     // this.cookies.setCookie(request.cookie('fph.chatango.com=http'), 'http://.chatango.com');
   }
@@ -111,19 +119,18 @@ export class User extends EventEmitter {
     return this.name;
   }
 
-
   /**
    * Get user styles and backgrounds, and authenticate if we have the password
    */
-  private _getDataRegistered(): Promise<void> {
-    return this.getStyle()
+  private _initRegistered(): Promise<void> {
+    return this._inited = this._getStyle()
     .catch((err) => {
       error(`Error fetching style data for ${this.name}, using default.`);
       return this.style;
     })
     .then((style) => {
       this.style = style;
-      return this.getBackground();
+      return this._getBackground();
     })
     .catch((err) => {
       error(`Error fetching background data for ${this.name}, using default.`);
@@ -134,21 +141,21 @@ export class User extends EventEmitter {
       if (this.password === undefined) {
         return;
       }
-      return this.authorize();
+      return this._authorize();
     })
     .then(() => {
       log(`Initialized ${this.name}`);
     });
   }
 
-  _getData(): Promise<void> {
-    return Promise.resolve();
+  private _init(): Promise<void> {
+    return this._inited = Promise.resolve();
   }
 
   /**
    * Authenticate this user to make setStyle, setBackground and setBackgroundImage requests
    */
-  authorize(): Promise<void> {
+  private _authorize(): Promise<void> {
     debug(`Authorizing ${this.name}`);
     return new Promise<void>((resolve, reject) => {
       request({
@@ -188,6 +195,13 @@ export class User extends EventEmitter {
    * Get the Message style for this User
    */
   getStyle(): Promise<Style> {
+    if (this.is_inited) {
+      return Promise.resolve(this.style);
+    }
+    return this._inited.then(() => this.style);
+  }
+
+  private _getStyle(): Promise<Style> {
     debug(`Getting style for ${this.name}`);
     return new Promise<Style>((resolve, reject) => {
       request(`${this.ENDPOINT}/msgstyles.json`, (err, response, body) => {
@@ -217,45 +231,56 @@ export class User extends EventEmitter {
 
   /**
    * Set the styling for this User
-   * must be authenticated
+   * some styles are ignored if you are a temporary or anonymous user
    */
-  setStyle(style?: Style): Promise<Style> {
-    debug(`Saving style for ${this.name}`);
-    if (style === undefined) {
-      style = this.style;
-    }
-    else {
-      defaults(style, this.style);
-    }
-    // cast to strings for form-data
-    const data = {};
-    for (let key in style) {
-      data[key] = String(style[key]);
-    }
-    return new Promise<Style>((resolve, reject) => {
-      request({
-        url: 'http://chatango.com/updatemsgstyles',
-        method: 'POST',
-        jar: this._cookies,
-        formData: assign(data, {
-          'lo': this.name,
-          'p': this.password,
-        }),
-        headers: {
-          'User-Agent': 'ChatangoJS',
-        }
-      }, (err, response, body) => {
-        if (err) {
-          error(`Error while saving style for ${this.name}: ${err}`);
-          return reject(err);
-        }
-        if (response.statusCode !== 200) {
-          error(`Error while saving style for ${this.name}: ${response.statusMessage}`);
-          return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
-        }
-        log(`Saved style for ${this.name}`);
-        this.style = style;
-        resolve(style);
+   setStyle(style: StylePartial): User {
+     debug(`Setting style for ${this.name}`);
+     assign(this.style, style);
+     return this;
+   }
+
+   /**
+    * Save the styling for this User
+    * must be authenticated
+    */
+  saveStyle(style?: StylePartial): Promise<Style> {
+    return this._inited.then(() => {
+      debug(`Saving style for ${this.name}`);
+      if (this.type !== User.Types.Regi) {
+        throw new TypeError(`Tried to save style as a non-registered User: ${this.name}`);
+      }
+      if (style !== undefined) {
+        this.setStyle(style);
+      }
+      // cast to strings for form-data
+      const data = {};
+      for (let key in this.style) {
+        data[key] = String(this.style[key]);
+      }
+      return new Promise<Style>((resolve, reject) => {
+        request({
+          url: 'http://chatango.com/updatemsgstyles',
+          method: 'POST',
+          jar: this._cookies,
+          formData: assign(data, {
+            'lo': this.name,
+            'p': this.password,
+          }),
+          headers: {
+            'User-Agent': 'ChatangoJS',
+          }
+        }, (err, response, body) => {
+          if (err) {
+            error(`Error while saving style for ${this.name}: ${err}`);
+            return reject(err);
+          }
+          if (response.statusCode !== 200) {
+            error(`Error while saving style for ${this.name}: ${response.statusMessage}`);
+            return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
+          }
+          log(`Saved style for ${this.name}`);
+          resolve(this.style);
+        });
       });
     });
   }
@@ -264,6 +289,13 @@ export class User extends EventEmitter {
    * Get the background styling for this User
    */
   getBackground(): Promise<Background> {
+    if (this.is_inited) {
+      return Promise.resolve(this.background);
+    }
+    return this._inited.then(() => this.background);
+  }
+
+  private _getBackground(): Promise<Background> {
     debug(`Getting background for ${this.name}`);
     return new Promise<any>((resolve, reject) => {
       request(`${this.ENDPOINT}/msgbg.xml`, (err, response, body) => {
@@ -300,74 +332,87 @@ export class User extends EventEmitter {
 
   /**
    * Set the background styling for this User
+   * some background styles are ignored if you are a temporary or anonymous user
+   */
+  setBackground(background?: BackgroundPartial): User {
+    debug(`Setting background for ${this.name}`);
+    assign(this.background, background);
+    return this;
+  }
+
+  /**
+   * Save the background styling for this User
    * must be authenticated
    */
-  setBackground(background?: Background): Promise<Background> {
-    debug(`Saving background for ${this.name}`);
-    if (background === undefined) {
-      background = this.background;
-    }
-    else {
-      defaults(background, this.background);
-    }
-    return new Promise<Background>((resolve, reject) => {
-      request({
-        url: 'http://chatango.com/updatemsgbg',
-        method: 'POST',
-        jar: this._cookies,
-        form: assign(background, {
-          'lo': this.name,
-          'p': this.password
-        }),
-        headers: {
-          'User-Agent': 'ChatangoJS'
-        }
-      }, (err, response, body) => {
-        if (err) {
-          error(`Error while saving background for ${this.name}: ${err}`);
-          return reject(err);
-        }
-        if (response.statusCode !== 200) {
-          error(`Error while saving background for ${this.name}: ${response.statusMessage}`);
-          return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
-        }
-        log(`Saved background for ${this.name}`);
-        this.background = background;
-        resolve(background);
+  saveBackground(background?: BackgroundPartial): Promise<Background> {
+    return this._inited.then(() => {
+      debug(`Saving background for ${this.name}`);
+      if (this.type !== User.Types.Regi) {
+        throw new TypeError(`Tried to save background style as a non-registered User: ${this.name}`);
+      }
+      if (background !== undefined) {
+        this.setBackground(background);
+      }
+      return new Promise<Background>((resolve, reject) => {
+        request({
+          url: 'http://chatango.com/updatemsgbg',
+          method: 'POST',
+          jar: this._cookies,
+          form: assign({
+            'lo': this.name,
+            'p': this.password
+          }, this.background),
+          headers: {
+            'User-Agent': 'ChatangoJS'
+          }
+        }, (err, response, body) => {
+          if (err) {
+            error(`Error while saving background for ${this.name}: ${err}`);
+            return reject(err);
+          }
+          if (response.statusCode !== 200) {
+            error(`Error while saving background for ${this.name}: ${response.statusMessage}`);
+            return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
+          }
+          log(`Saved background for ${this.name}`);
+          resolve(this.background);
+        });
       });
     });
   }
 
   /**
-   * Set the background image for this User
+   * Save the background image for this User
    * must be authenticated
    */
-  setBackgroundImage(stream: ReadStream): Promise<void> {
+  saveBackgroundImage(stream: ReadStream): Promise<void> {
     debug(`Saving background image for ${this.name}`);
-    return new Promise<void>((resolve, reject) => {
-      request({
-        url: 'http://chatango.com/updatemsgbg',
-        method: 'POST',
-        jar: this._cookies,
-        headers: {
-          'User-Agent': 'ChatangoJS'
-        },
-        formData: {
-          'lo': this.name,
-          'p': this.password,
-          'Filedata': stream
-        }
-      }, (err, response, body) => {
-        if (err) {
-          error(`Error while saving background image for ${this.name}: ${err}`);
-          return reject(err);
-        }
-        if (response.statusCode !== 200) {
-          error(`Error while saving background for ${this.name}: ${response.statusMessage} => Are you authenticated?`);
-          return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
-        }
-        log(`Saved background image for ${this.name}`);
-        resolve();
+    return this._inited.then(() => {
+      return new Promise<void>((resolve, reject) => {
+        request({
+          url: 'http://chatango.com/updatemsgbg',
+          method: 'POST',
+          jar: this._cookies,
+          headers: {
+            'User-Agent': 'ChatangoJS'
+          },
+          formData: {
+            'lo': this.name,
+            'p': this.password,
+            'Filedata': stream
+          }
+        }, (err, response, body) => {
+          if (err) {
+            error(`Error while saving background image for ${this.name}: ${err}`);
+            return reject(err);
+          }
+          if (response.statusCode !== 200) {
+            error(`Error while saving background for ${this.name}: ${response.statusMessage} => Are you authenticated?`);
+            return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
+          }
+          log(`Saved background image for ${this.name}`);
+          resolve();
+        });
       });
     });
   }
@@ -395,11 +440,11 @@ export class User extends EventEmitter {
    * TODO - fix the above and call these from the prototype?
    */
   static getStyle(username: string): Promise<Style> {
-    return new User(username).getStyle();
+    return new User(username)._getStyle();
   }
 
   static getBackground(username: string): Promise<Background> {
-    return new User(username).getBackground();
+    return new User(username)._getBackground();
   }
 
   static getBackgroundImage(username: string): request.Request {

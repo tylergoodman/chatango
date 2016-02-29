@@ -26,6 +26,17 @@ export interface StyleAPIGet {
     italics: boolean;
     underline: boolean;
 }
+export interface StylePartial {
+    stylesOn?: boolean;
+    fontFamily?: number;
+    fontSize?: number;
+    usebackground?: number;
+    textColor?: string;
+    nameColor?: string;
+    bold?: boolean;
+    italics?: boolean;
+    underline?: boolean;
+}
 export declare class Style {
     stylesOn: boolean;
     fontFamily: number;
@@ -37,17 +48,6 @@ export declare class Style {
     italics: boolean;
     underline: boolean;
     constructor(args?: StyleAPIGet);
-}
-export declare class Background {
-    align: string;
-    ialp: number;
-    tile: number;
-    bgalp: number;
-    bgc: string;
-    useimg: number;
-    hasrec: number;
-    isvid: number;
-    constructor(args?: BackgroundAPIGet);
 }
 export interface BackgroundAPIGet {
     bgi: {
@@ -62,6 +62,27 @@ export interface BackgroundAPIGet {
             useimg: string;
         };
     };
+}
+export interface BackgroundPartial {
+    align?: string;
+    ialp?: number;
+    tile?: number;
+    bgalp?: number;
+    bgc?: string;
+    useimg?: number;
+    hasrec?: number;
+    isvid?: number;
+}
+export declare class Background {
+    align: string;
+    ialp: number;
+    tile: number;
+    bgalp: number;
+    bgc: string;
+    useimg: number;
+    hasrec: number;
+    isvid: number;
+    constructor(args?: BackgroundAPIGet);
 }
 export declare enum Font {
     Arial = 0,
