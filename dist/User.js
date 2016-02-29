@@ -177,25 +177,24 @@ var User = (function (_super) {
         });
     };
     User.prototype.setStyle = function (style) {
-        debug("Setting style for " + this.name);
-        lodash_1.assign(this.style, style);
-        return this;
+        var _this = this;
+        return this._inited.then(function () {
+            debug("Setting style for " + _this.name);
+            lodash_1.assign(_this.style, style);
+        });
     };
     User.prototype.saveStyle = function (style) {
         var _this = this;
-        return this._inited.then(function () {
+        if (this.type !== User.Types.Regi) {
+            throw new TypeError("Tried to save style as a non-registered User: " + this.name);
+        }
+        return this.setStyle(style).then(function () {
             debug("Saving style for " + _this.name);
-            if (_this.type !== User.Types.Regi) {
-                throw new TypeError("Tried to save style as a non-registered User: " + _this.name);
-            }
-            if (style !== undefined) {
-                _this.setStyle(style);
-            }
-            var data = {};
-            for (var key in _this.style) {
-                data[key] = String(_this.style[key]);
-            }
             return new Promise(function (resolve, reject) {
+                var data = {};
+                for (var key in _this.style) {
+                    data[key] = String(_this.style[key]);
+                }
                 request({
                     url: 'http://chatango.com/updatemsgstyles',
                     method: 'POST',
@@ -265,20 +264,19 @@ var User = (function (_super) {
         });
     };
     User.prototype.setBackground = function (background) {
-        debug("Setting background for " + this.name);
-        lodash_1.assign(this.background, background);
-        return this;
+        var _this = this;
+        return this._inited.then(function () {
+            debug("Setting background for " + _this.name);
+            lodash_1.assign(_this.background, background);
+        });
     };
     User.prototype.saveBackground = function (background) {
         var _this = this;
-        return this._inited.then(function () {
+        if (this.type !== User.Types.Regi) {
+            throw new TypeError("Tried to save background style as a non-registered User: " + this.name);
+        }
+        return this.setBackground(background).then(function () {
             debug("Saving background for " + _this.name);
-            if (_this.type !== User.Types.Regi) {
-                throw new TypeError("Tried to save background style as a non-registered User: " + _this.name);
-            }
-            if (background !== undefined) {
-                _this.setBackground(background);
-            }
             return new Promise(function (resolve, reject) {
                 request({
                     url: 'http://chatango.com/updatemsgbg',

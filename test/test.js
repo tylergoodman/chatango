@@ -74,13 +74,17 @@ describe('User', function () {
       .catch(done);
   });
 
-  it('set style', function () {
+  it('set style', function (done) {
     var user = new User(USERNAME, PASSWORD);
     var new_name_color = hexColor();
     user.setStyle({
       nameColor: new_name_color,
-    });
-    user.style.nameColor.should.equal(new_name_color);
+    })
+      .then(() => {
+        user.style.nameColor.should.equal(new_name_color);
+        done();
+      })
+      .catch(done);
   });
 
   it('save style', function (done) {
@@ -91,19 +95,23 @@ describe('User', function () {
     })
       .then(function (style) {
         user.style.should.containEql(style);
-        style.should.have.property('nameColor', new_name_color);
+        user.style.should.have.property('nameColor', new_name_color);
         done();
       })
       .catch(done);
   });
 
-  it('set background', function () {
+  it('set background', function (done) {
     var user = new User(USERNAME, PASSWORD);
     var new_bgc = hexColor();
     user.setBackground({
       bgc: new_bgc
     })
-    user.background.bec.should.equal(new_bgc);
+      .then(() => {
+        user.background.bgc.should.equal(new_bgc);
+        done();
+      })
+      .catch(done);
   });
 
   it('save background', function (done) {
@@ -114,7 +122,7 @@ describe('User', function () {
     })
       .then(function (background) {
         user.background.should.containEql(background);
-        background.should.have.property('bgc', new_bgc);
+        user.background.should.have.property('bgc', new_bgc);
         done();
       })
       .catch(done);

@@ -31,11 +31,11 @@ export declare class User extends EventEmitter {
     private _authorize();
     getStyle(): Promise<Style>;
     private _getStyle();
-    setStyle(style: StylePartial): User;
+    setStyle(style: StylePartial): Promise<void>;
     saveStyle(style?: StylePartial): Promise<Style>;
     getBackground(): Promise<Background>;
     private _getBackground();
-    setBackground(background?: BackgroundPartial): User;
+    setBackground(background: BackgroundPartial): Promise<void>;
     saveBackground(background?: BackgroundPartial): Promise<Background>;
     saveBackgroundImage(stream: ReadStream): Promise<void>;
     getBackgroundImage(): request.Request;

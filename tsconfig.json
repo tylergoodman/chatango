@@ -14,7 +14,7 @@
         "preserveConstEnums": true,
         "suppressImplicitAnyIndexErrors": true,
         "outDir": "./dist",
-        "rootDir": "./dist"
+        "rootDir": "./src"
     },
     "filesGlob": [
         "**/*.ts",
@@ -23,6 +23,7 @@
         "!typings-old/**",
         "!typings/browser/**",
         "!typings/browser.d.ts",
+        "!dist",
         "node_modules/typescript/lib/lib.core.es6.d.ts"
     ],
     "compileOnSave": true,

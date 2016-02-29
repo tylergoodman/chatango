@@ -233,10 +233,11 @@ export class User extends EventEmitter {
    * Set the styling for this User
    * some styles are ignored if you are a temporary or anonymous user
    */
-   setStyle(style: StylePartial): User {
-     debug(`Setting style for ${this.name}`);
-     assign(this.style, style);
-     return this;
+   setStyle(style: StylePartial): Promise<void> {
+     return this._inited.then(() => {
+       debug(`Setting style for ${this.name}`);
+       assign(this.style, style);
+     });
    }
 
    /**
@@ -244,20 +245,17 @@ export class User extends EventEmitter {
     * must be authenticated
     */
   saveStyle(style?: StylePartial): Promise<Style> {
-    return this._inited.then(() => {
+    if (this.type !== User.Types.Regi) {
+      throw new TypeError(`Tried to save style as a non-registered User: ${this.name}`);
+    }
+    return this.setStyle(style).then(() => {
       debug(`Saving style for ${this.name}`);
-      if (this.type !== User.Types.Regi) {
-        throw new TypeError(`Tried to save style as a non-registered User: ${this.name}`);
-      }
-      if (style !== undefined) {
-        this.setStyle(style);
-      }
-      // cast to strings for form-data
-      const data = {};
-      for (let key in this.style) {
-        data[key] = String(this.style[key]);
-      }
       return new Promise<Style>((resolve, reject) => {
+        // cast to strings for form-data
+        const data = {};
+        for (let key in this.style) {
+          data[key] = String(this.style[key]);
+        }
         request({
           url: 'http://chatango.com/updatemsgstyles',
           method: 'POST',
@@ -334,10 +332,11 @@ export class User extends EventEmitter {
    * Set the background styling for this User
    * some background styles are ignored if you are a temporary or anonymous user
    */
-  setBackground(background?: BackgroundPartial): User {
-    debug(`Setting background for ${this.name}`);
-    assign(this.background, background);
-    return this;
+  setBackground(background: BackgroundPartial): Promise<void> {
+    return this._inited.then(() => {
+      debug(`Setting background for ${this.name}`);
+      assign(this.background, background);
+    });
   }
 
   /**
@@ -345,14 +344,11 @@ export class User extends EventEmitter {
    * must be authenticated
    */
   saveBackground(background?: BackgroundPartial): Promise<Background> {
-    return this._inited.then(() => {
+    if (this.type !== User.Types.Regi) {
+      throw new TypeError(`Tried to save background style as a non-registered User: ${this.name}`);
+    }
+    return this.setBackground(background).then(() => {
       debug(`Saving background for ${this.name}`);
-      if (this.type !== User.Types.Regi) {
-        throw new TypeError(`Tried to save background style as a non-registered User: ${this.name}`);
-      }
-      if (background !== undefined) {
-        this.setBackground(background);
-      }
       return new Promise<Background>((resolve, reject) => {
         request({
           url: 'http://chatango.com/updatemsgbg',
