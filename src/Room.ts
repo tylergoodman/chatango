@@ -130,7 +130,7 @@ export class Room extends EventEmitter implements RoomOptions {
   server_time: number; // unix time of the server, used in generating anonymous IDs
   here_now: number; // number of people in the room (including anonymous/unnamed)
   moderators: Set<string> = new Set<string>(); // set of moderator names. populated on connect (if we have the permission to see them)
-  users: {[index: string]: User} = {};
+  users: Map<string, User> = new Map<string, User>();
 
   // Options
   auto_reconnect: boolean;
@@ -341,7 +341,7 @@ export class Room extends EventEmitter implements RoomOptions {
    }
 
    private _reset(): void {
-     this.users = {};
+     this.users = new Map<string, User>();
      this.moderators = new Set<string>();
 
      this._stopPing();
@@ -380,7 +380,7 @@ export class Room extends EventEmitter implements RoomOptions {
   private _userlist_get(): Promise<void> {
     debug(`Getting userlist for ${this.identifier}`);
     // we always have our name at this point
-    this.users[this.user.name] = this.user;
+    this.users.set(this.user.name, this.user);
     return new Promise<void>((resolve, reject) => {
       this.once('_userlist', resolve);
       this._send('gparticipants');
@@ -811,10 +811,10 @@ export class Room extends EventEmitter implements RoomOptions {
         None, // always 'None'?
         empty // always empty
       ] = user_str.split(':');
-      let user = this.users[name.toLowerCase()];
+      let user = this.users.get(name.toLowerCase());
       if (user === undefined) {
         user = new User(name);
-        this.users[user.name] = user;
+        this.users.set(user.name, user);
         debug(`First time seeing registered user "${user}"@${this.name}`);
       }
       user._connection_ids.add(connection_id);
@@ -853,12 +853,12 @@ export class Room extends EventEmitter implements RoomOptions {
     else {
       name = user_registered;
     }
-    let user = this.users[name.toLowerCase()];
+    let user = this.users.get(name.toLowerCase());
     // join
     if (status === '1') {
       if (user === undefined) {
         user = new User(name);
-        this.users[user.name] = user;
+        this.users.set(user.name, user);
       }
       user._connection_ids.add(connection_id);
       user.joined_at = parseFloat(joined_at);
@@ -871,7 +871,7 @@ export class Room extends EventEmitter implements RoomOptions {
     else {
       user._connection_ids.delete(connection_id);
       if (user._connection_ids.size === 0) {
-        delete this.users[user.name];
+        this.users.delete(user.name);
         log(`User ${user} left room ${this.identifier}`);
         this.emit('leave', user);
       }
@@ -1043,10 +1043,10 @@ export class Room extends EventEmitter implements RoomOptions {
     else {
       name = User.parseAnonName(raw, user_session_id);
     }
-    let user = this.users[name.toLowerCase()];
+    let user = this.users.get(name.toLowerCase());
     if (user === undefined) {
       user = new User(name);
-      this.users[user.name] = user;
+      this.users.set(user.name, user);
     }
     user.id = user_id;
     user.ip = user_ip;

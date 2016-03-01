@@ -23,7 +23,7 @@
         "!typings-old/**",
         "!typings/browser/**",
         "!typings/browser.d.ts",
-        "!dist",
+        "!dist/**",
         "node_modules/typescript/lib/lib.core.es6.d.ts"
     ],
     "compileOnSave": true,

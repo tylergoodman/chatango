@@ -22,7 +22,7 @@ var Room = (function (_super) {
         if (user === void 0) { user = new User_1.default(); }
         _super.call(this);
         this.moderators = new Set();
-        this.users = {};
+        this.users = new Map();
         this._buffer = '';
         this._first_send = true;
         this._disconnecting = false;
@@ -171,7 +171,7 @@ var Room = (function (_super) {
         }
     };
     Room.prototype._reset = function () {
-        this.users = {};
+        this.users = new Map();
         this.moderators = new Set();
         this._stopPing();
         this._buffer = '';
@@ -200,7 +200,7 @@ var Room = (function (_super) {
     Room.prototype._userlist_get = function () {
         var _this = this;
         debug("Getting userlist for " + this.identifier);
-        this.users[this.user.name] = this.user;
+        this.users.set(this.user.name, this.user);
         return new Promise(function (resolve, reject) {
             _this.once('_userlist', resolve);
             _this._send('gparticipants');
@@ -455,10 +455,10 @@ var Room = (function (_super) {
                 break;
             }
             var _b = user_str.split(':'), connection_id = _b[0], joined_at = _b[1], session_id = _b[2], name_3 = _b[3], None = _b[4], empty = _b[5];
-            var user = this.users[name_3.toLowerCase()];
+            var user = this.users.get(name_3.toLowerCase());
             if (user === undefined) {
                 user = new User_1.default(name_3);
-                this.users[user.name] = user;
+                this.users.set(user.name, user);
                 debug("First time seeing registered user \"" + user + "\"@" + this.name);
             }
             user._connection_ids.add(connection_id);
@@ -478,11 +478,11 @@ var Room = (function (_super) {
         else {
             name = user_registered;
         }
-        var user = this.users[name.toLowerCase()];
+        var user = this.users.get(name.toLowerCase());
         if (status === '1') {
             if (user === undefined) {
                 user = new User_1.default(name);
-                this.users[user.name] = user;
+                this.users.set(user.name, user);
             }
             user._connection_ids.add(connection_id);
             user.joined_at = parseFloat(joined_at);
@@ -494,7 +494,7 @@ var Room = (function (_super) {
         else {
             user._connection_ids.delete(connection_id);
             if (user._connection_ids.size === 0) {
-                delete this.users[user.name];
+                this.users.delete(user.name);
                 log("User " + user + " left room " + this.identifier);
                 this.emit('leave', user);
             }
@@ -574,10 +574,10 @@ var Room = (function (_super) {
         else {
             name = User_1.default.parseAnonName(raw, user_session_id);
         }
-        var user = this.users[name.toLowerCase()];
+        var user = this.users.get(name.toLowerCase());
         if (user === undefined) {
             user = new User_1.default(name);
-            this.users[user.name] = user;
+            this.users.set(user.name, user);
         }
         user.id = user_id;
         user.ip = user_ip;

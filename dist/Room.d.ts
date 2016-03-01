@@ -17,9 +17,7 @@ export declare class Room extends EventEmitter implements RoomOptions {
     server_time: number;
     here_now: number;
     moderators: Set<string>;
-    users: {
-        [index: string]: User;
-    };
+    users: Map<string, User>;
     auto_reconnect: boolean;
     message_cache_size: number;
     private _socket;
