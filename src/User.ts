@@ -63,7 +63,7 @@ export class User extends EventEmitter {
   static Types = UserTypes;
 
   static login(username: string, password: string): User {
-    let me = new User(username);
+    let me = new User(username, User.Types.Regi);
     me.password = password;
     return me;
   }

@@ -51,7 +51,7 @@ var User = (function (_super) {
         configurable: true
     });
     User.login = function (username, password) {
-        var me = new User(username);
+        var me = new User(username, User.Types.Regi);
         me.password = password;
         return me;
     };
