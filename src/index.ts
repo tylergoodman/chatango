@@ -8,7 +8,7 @@ import User from './User';
 export function joinRoom (roomname: string, username?: string, password?: string): Room {
   let ret: Room;
   if (username && password) {
-    ret = new Room(roomname, new User(username, password));
+    ret = new Room(roomname, User.login(username, password));
   }
   else if (username) {
     ret = new Room(roomname, new User(username));

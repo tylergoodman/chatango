@@ -9,7 +9,7 @@ const warn = Debug('chatango:Room:warn');
 const error = Debug('chatango:Room:error');
 const debug = Debug('chatango:Room:debug');
 
-import User from './User';
+import User, { UserTypes } from './User';
 import Message, { MessageCache } from './Message';
 
 /**
@@ -816,7 +816,7 @@ export class Room extends EventEmitter implements RoomOptions {
       ] = user_str.split(':');
       let user = this.users.get(name.toLowerCase());
       if (user === undefined) {
-        user = new User(name);
+        user = new User(name, User.Types.Regi);
         this.users.set(user.name, user);
         debug(`First time seeing registered user "${user}"@${this.name}`);
       }
@@ -843,24 +843,28 @@ export class Room extends EventEmitter implements RoomOptions {
   __command__participant(status: string, connection_id: string, session_id: string, user_registered: string, user_temporary: string, no_idea: string, joined_at: string): void {
     // get the name
     let name: string;
+    let type: UserTypes;
     // user is anonymous
     if (user_registered === 'None' && user_temporary === 'None') {
       // anonymous username is determined based on their joined_at unix timestamp and session_id
       name = User.parseAnonName(`<n${session_id.slice(4, 8)}/>`, joined_at.slice(0, joined_at.indexOf('.')));
+      type = User.Types.Anon;
     }
     // user is temporary
     else if (user_temporary !== 'None') {
       name = user_temporary;
+      type = User.Types.Temp;
     }
     // user is registered
     else {
       name = user_registered;
+      type = User.Types.Regi;
     }
     let user = this.users.get(name.toLowerCase());
     // join
     if (status === '1') {
       if (user === undefined) {
-        user = new User(name);
+        user = new User(name, type);
         this.users.set(user.name, user);
       }
       user._connection_ids.add(connection_id);
@@ -1037,18 +1041,22 @@ export class Room extends EventEmitter implements RoomOptions {
     // rejoin message parts
     const raw = raw_message.join(':');
     let name: string;
+    let type: UserTypes;
     if (user_registered) {
       name = user_registered;
+      type = User.Types.Regi;
     }
     else if (user_temporary) {
       name = user_temporary;
+      type = User.Types.Temp;
     }
     else {
       name = User.parseAnonName(raw, user_session_id);
+      type = User.Types.Anon;
     }
     let user = this.users.get(name.toLowerCase());
     if (user === undefined) {
-      user = new User(name);
+      user = new User(name, type);
       this.users.set(user.name, user);
     }
     user.id = user_id;

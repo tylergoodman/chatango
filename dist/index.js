@@ -10,7 +10,7 @@ var User_2 = require('./User');
 function joinRoom(roomname, username, password) {
     var ret;
     if (username && password) {
-        ret = new Room_2.default(roomname, new User_2.default(username, password));
+        ret = new Room_2.default(roomname, User_2.default.login(username, password));
     }
     else if (username) {
         ret = new Room_2.default(roomname, new User_2.default(username));

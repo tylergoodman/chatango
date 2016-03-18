@@ -23,21 +23,14 @@ var Message_1 = require('./Message');
 var UserTypes = exports.UserTypes;
 var User = (function (_super) {
     __extends(User, _super);
-    function User(name, password) {
+    function User(name, type) {
         _super.call(this);
         this._connection_ids = new Set();
         this._cookies = request.jar();
         this.name = (name || '').toLowerCase();
-        this.password = password;
-        if (this.password && this.name) {
-            this.type = UserTypes.Regi;
+        this.type = type || (this.name.length > 0 ? UserTypes.Temp : UserTypes.Anon);
+        if (this.name.length > 0 && this.type === UserTypes.Regi) {
             this._init = this._initRegistered;
-        }
-        else if (this.name) {
-            this.type = UserTypes.Temp;
-        }
-        else {
-            this.type = UserTypes.Anon;
         }
         this.style = new Message_1.Style();
         this.background = new Message_1.Background();
@@ -57,6 +50,11 @@ var User = (function (_super) {
         enumerable: true,
         configurable: true
     });
+    User.login = function (username, password) {
+        var me = new User(username);
+        me.password = password;
+        return me;
+    };
     User.parseAnonName = function (message, _id) {
         var n_tag;
         try {

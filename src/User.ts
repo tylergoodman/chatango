@@ -62,6 +62,12 @@ export class User extends EventEmitter {
 
   static Types = UserTypes;
 
+  static login(username: string, password: string): User {
+    let me = new User(username);
+    me.password = password;
+    return me;
+  }
+
   /**
    * Get the name of the anonymous user given the raw message and session ID
    * taken and modified from ch.py - https://github.com/Nullspeaker/ch.py
@@ -90,21 +96,14 @@ export class User extends EventEmitter {
     return name;
   }
 
-  constructor(name?: string, password?: string) {
+  constructor(name?: string, type?: UserTypes) {
     super();
 
     this.name = (name || '').toLowerCase();
-    this.password = password;
+    this.type = type || (this.name.length > 0 ? UserTypes.Temp : UserTypes.Anon);
 
-    if (this.password && this.name) {
-      this.type = UserTypes.Regi;
+    if (this.name.length > 0 && this.type === UserTypes.Regi) {
       this._init = this._initRegistered;
-    }
-    else if (this.name) {
-      this.type = UserTypes.Temp;
-    }
-    else {
-      this.type = UserTypes.Anon;
     }
 
     this.style = new Style();

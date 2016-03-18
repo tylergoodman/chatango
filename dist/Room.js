@@ -460,7 +460,7 @@ var Room = (function (_super) {
             var _b = user_str.split(':'), connection_id = _b[0], joined_at = _b[1], session_id = _b[2], name_3 = _b[3], None = _b[4], empty = _b[5];
             var user = this.users.get(name_3.toLowerCase());
             if (user === undefined) {
-                user = new User_1.default(name_3);
+                user = new User_1.default(name_3, User_1.default.Types.Regi);
                 this.users.set(user.name, user);
                 debug("First time seeing registered user \"" + user + "\"@" + this.name);
             }
@@ -472,19 +472,23 @@ var Room = (function (_super) {
     };
     Room.prototype.__command__participant = function (status, connection_id, session_id, user_registered, user_temporary, no_idea, joined_at) {
         var name;
+        var type;
         if (user_registered === 'None' && user_temporary === 'None') {
             name = User_1.default.parseAnonName("<n" + session_id.slice(4, 8) + "/>", joined_at.slice(0, joined_at.indexOf('.')));
+            type = User_1.default.Types.Anon;
         }
         else if (user_temporary !== 'None') {
             name = user_temporary;
+            type = User_1.default.Types.Temp;
         }
         else {
             name = user_registered;
+            type = User_1.default.Types.Regi;
         }
         var user = this.users.get(name.toLowerCase());
         if (status === '1') {
             if (user === undefined) {
-                user = new User_1.default(name);
+                user = new User_1.default(name, type);
                 this.users.set(user.name, user);
             }
             user._connection_ids.add(connection_id);
@@ -568,18 +572,22 @@ var Room = (function (_super) {
         }
         var raw = raw_message.join(':');
         var name;
+        var type;
         if (user_registered) {
             name = user_registered;
+            type = User_1.default.Types.Regi;
         }
         else if (user_temporary) {
             name = user_temporary;
+            type = User_1.default.Types.Temp;
         }
         else {
             name = User_1.default.parseAnonName(raw, user_session_id);
+            type = User_1.default.Types.Anon;
         }
         var user = this.users.get(name.toLowerCase());
         if (user === undefined) {
-            user = new User_1.default(name);
+            user = new User_1.default(name, type);
             this.users.set(user.name, user);
         }
         user.id = user_id;

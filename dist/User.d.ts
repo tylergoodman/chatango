@@ -23,8 +23,9 @@ export declare class User extends EventEmitter {
     readonly ENDPOINT: string;
     readonly is_inited: boolean;
     static Types: typeof UserTypes;
+    static login(username: string, password: string): User;
     static parseAnonName(message: string, _id: string): string;
-    constructor(name?: string, password?: string);
+    constructor(name?: string, type?: UserTypes);
     toString(): string;
     private _initRegistered();
     private _init();
