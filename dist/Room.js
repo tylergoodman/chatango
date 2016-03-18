@@ -147,6 +147,9 @@ var Room = (function (_super) {
     };
     Room.prototype._startPing = function () {
         var _this = this;
+        if (this._ping !== undefined) {
+            return;
+        }
         debug("starting ping " + this.identifier);
         this._ping = setInterval(function () { return _this._send('', false); }, Room.PING_TIMEOUT);
     };

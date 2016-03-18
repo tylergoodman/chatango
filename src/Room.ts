@@ -311,6 +311,9 @@ export class Room extends EventEmitter implements RoomOptions {
    * Chatango requires a ping or it'll timeout in 3 minutes
    */
   private _startPing(): void {
+    if (this._ping !== undefined) {
+      return;
+    }
     debug(`starting ping ${this.identifier}`);
     this._ping = setInterval(() => this._send('', false), Room.PING_TIMEOUT);
   }
