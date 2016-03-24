@@ -1,24 +1,30 @@
 "use strict";
-const events_1 = require('events');
-const request = require('request');
-const xml2js_1 = require('xml2js');
-const Promise = require('bluebird');
-const lodash_1 = require('lodash');
-const Debug = require('debug');
-const log = Debug('chatango:User:log');
-const warn = Debug('chatango:User:warn');
-const error = Debug('chatango:User:error');
-const debug = Debug('chatango:User:debug');
-const Message_1 = require('./Message');
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var events_1 = require('events');
+var request = require('request');
+var xml2js_1 = require('xml2js');
+var Promise = require('bluebird');
+var lodash_1 = require('lodash');
+var Debug = require('debug');
+var log = Debug('chatango:User:log');
+var warn = Debug('chatango:User:warn');
+var error = Debug('chatango:User:error');
+var debug = Debug('chatango:User:debug');
+var Message_1 = require('./Message');
 (function (UserTypes) {
     UserTypes[UserTypes["Anon"] = 0] = "Anon";
     UserTypes[UserTypes["Temp"] = 1] = "Temp";
     UserTypes[UserTypes["Regi"] = 2] = "Regi";
 })(exports.UserTypes || (exports.UserTypes = {}));
 var UserTypes = exports.UserTypes;
-class User extends events_1.EventEmitter {
-    constructor(name, type) {
-        super();
+var User = (function (_super) {
+    __extends(User, _super);
+    function User(name, type) {
+        _super.call(this);
         this._connection_ids = new Set();
         this._cookies = request.jar();
         this.name = (name || '').toLowerCase();
@@ -30,305 +36,325 @@ class User extends events_1.EventEmitter {
         this.background = new Message_1.Background();
         this._inited = this._init();
     }
-    get ENDPOINT() {
-        return `http://ust.chatango.com/profileimg/${this.name.charAt(0)}/${this.name.charAt(1)}/${this.name}`;
-    }
-    get is_inited() {
-        return this._inited.isFulfilled();
-    }
-    static login(username, password) {
-        let me = new User(username, User.Types.Regi);
+    Object.defineProperty(User.prototype, "ENDPOINT", {
+        get: function () {
+            return "http://ust.chatango.com/profileimg/" + this.name.charAt(0) + "/" + this.name.charAt(1) + "/" + this.name;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(User.prototype, "is_inited", {
+        get: function () {
+            return this._inited.isFulfilled();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    User.login = function (username, password) {
+        var me = new User(username, User.Types.Regi);
         me.password = password;
         return me;
-    }
-    static parseAnonName(message, _id) {
-        let n_tag;
+    };
+    User.parseAnonName = function (message, _id) {
+        var n_tag;
         try {
             n_tag = message.match(/^<n(\d{4})\/>/)[1].split('');
         }
         catch (e) {
             return '';
         }
-        const id = _id.slice(-4).split('');
-        let ret = [];
-        for (let i = 0; i < 4; i++) {
-            const val = parseInt(n_tag[i], 10) + parseInt(id[i], 10);
+        var id = _id.slice(-4).split('');
+        var ret = [];
+        for (var i = 0; i < 4; i++) {
+            var val = parseInt(n_tag[i], 10) + parseInt(id[i], 10);
             ret.push(val.toString(10).slice(-1));
         }
-        const name = 'anon' + ret.join('');
-        debug(`Parsed anonymous name "${name}"`);
+        var name = 'anon' + ret.join('');
+        debug("Parsed anonymous name \"" + name + "\"");
         return name;
-    }
-    toString() {
+    };
+    User.prototype.toString = function () {
         return this.name;
-    }
-    _initRegistered() {
+    };
+    User.prototype._initRegistered = function () {
+        var _this = this;
         return this._inited = this._getStyle()
-            .catch((err) => {
-            error(`Error fetching style data for ${this.name}, using default.`);
-            return this.style;
+            .catch(function (err) {
+            error("Error fetching style data for " + _this.name + ", using default.");
+            return _this.style;
         })
-            .then((style) => {
-            this.style = style;
-            return this._getBackground();
+            .then(function (style) {
+            _this.style = style;
+            return _this._getBackground();
         })
-            .catch((err) => {
-            error(`Error fetching background data for ${this.name}, using default.`);
-            return this.background;
+            .catch(function (err) {
+            error("Error fetching background data for " + _this.name + ", using default.");
+            return _this.background;
         })
-            .then((background) => {
-            this.background = background;
-            if (this.password === undefined) {
+            .then(function (background) {
+            _this.background = background;
+            if (_this.password === undefined) {
                 return;
             }
-            return this._authorize();
+            return _this._authorize();
         })
-            .then(() => {
-            log(`Initialized ${this.name}`);
+            .then(function () {
+            log("Initialized " + _this.name);
         });
-    }
-    _init() {
+    };
+    User.prototype._init = function () {
         return this._inited = Promise.resolve();
-    }
-    _authorize() {
-        debug(`Authorizing ${this.name}`);
-        return new Promise((resolve, reject) => {
+    };
+    User.prototype._authorize = function () {
+        var _this = this;
+        debug("Authorizing " + this.name);
+        return new Promise(function (resolve, reject) {
             request({
                 url: 'http://chatango.com/login',
                 method: 'POST',
-                jar: this._cookies,
+                jar: _this._cookies,
                 form: {
-                    user_id: this.name,
-                    password: this.password,
+                    user_id: _this.name,
+                    password: _this.password,
                     storecookie: 'on',
                     checkerrors: 'yes'
                 },
                 headers: {
                     'User-Agent': 'ChatangoJS',
                 }
-            }, (err, response, body) => {
+            }, function (err, response, body) {
                 if (response.body.length !== 0) {
-                    err = new Error(`Invalid credentials`);
+                    err = new Error("Invalid credentials");
                 }
                 if (err) {
-                    error(`Error while authorizing ${this.name}: ${err}`);
+                    error("Error while authorizing " + _this.name + ": " + err);
                     return reject(err);
                 }
                 if (response.statusCode !== 200) {
-                    error(`Error while authorizing ${this.name}: ${response.statusMessage}`);
-                    return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
+                    error("Error while authorizing " + _this.name + ": " + response.statusMessage);
+                    return reject(new Error(response.statusCode + ": " + response.statusMessage));
                 }
-                log(`Authorized ${this.name}`);
+                log("Authorized " + _this.name);
                 resolve();
             });
         });
-    }
-    getStyle() {
+    };
+    User.prototype.getStyle = function () {
+        var _this = this;
         if (this.is_inited) {
             return Promise.resolve(this.style);
         }
-        return this._inited.then(() => this.style);
-    }
-    _getStyle() {
-        debug(`Getting style for ${this.name}`);
-        return new Promise((resolve, reject) => {
-            request(`${this.ENDPOINT}/msgstyles.json`, (err, response, body) => {
+        return this._inited.then(function () { return _this.style; });
+    };
+    User.prototype._getStyle = function () {
+        var _this = this;
+        debug("Getting style for " + this.name);
+        return new Promise(function (resolve, reject) {
+            request(_this.ENDPOINT + "/msgstyles.json", function (err, response, body) {
                 if (err) {
-                    error(`Error while retrieving style for ${this.name}: ${err}`);
+                    error("Error while retrieving style for " + _this.name + ": " + err);
                     return reject(err);
                 }
                 if (response.statusCode !== 200) {
-                    error(`Error while retrieving style for ${this.name}: ${response.statusMessage}`);
-                    return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
+                    error("Error while retrieving style for " + _this.name + ": " + response.statusMessage);
+                    return reject(new Error(response.statusCode + ": " + response.statusMessage));
                 }
-                debug(`Retrieved style for ${this.name}`);
+                debug("Retrieved style for " + _this.name);
                 if (response.headers['content-type'] === 'image/jpeg') {
-                    debug(`User ${this.name} has no style data. Using default.`);
+                    debug("User " + _this.name + " has no style data. Using default.");
                     return resolve(new Message_1.Style());
                 }
                 try {
                     resolve(new Message_1.Style(JSON.parse(body)));
                 }
                 catch (err) {
-                    error(`Errored parsing getStyle(): ${err}`);
+                    error("Errored parsing getStyle(): " + err);
                     reject(err);
                 }
             });
         });
-    }
-    setStyle(style) {
-        return this._inited.then(() => {
-            debug(`Setting style for ${this.name}`);
-            lodash_1.assign(this.style, style);
+    };
+    User.prototype.setStyle = function (style) {
+        var _this = this;
+        return this._inited.then(function () {
+            debug("Setting style for " + _this.name);
+            lodash_1.assign(_this.style, style);
         });
-    }
-    saveStyle(style) {
+    };
+    User.prototype.saveStyle = function (style) {
+        var _this = this;
         if (this.type !== User.Types.Regi) {
-            throw new TypeError(`Tried to save style as a non-registered User: ${this.name}`);
+            throw new TypeError("Tried to save style as a non-registered User: " + this.name);
         }
-        return this.setStyle(style).then(() => {
-            debug(`Saving style for ${this.name}`);
-            return new Promise((resolve, reject) => {
-                const data = {};
-                for (let key in this.style) {
-                    data[key] = String(this.style[key]);
+        return this.setStyle(style).then(function () {
+            debug("Saving style for " + _this.name);
+            return new Promise(function (resolve, reject) {
+                var data = {};
+                for (var key in _this.style) {
+                    data[key] = String(_this.style[key]);
                 }
                 request({
                     url: 'http://chatango.com/updatemsgstyles',
                     method: 'POST',
-                    jar: this._cookies,
+                    jar: _this._cookies,
                     formData: lodash_1.assign(data, {
-                        'lo': this.name,
-                        'p': this.password,
+                        'lo': _this.name,
+                        'p': _this.password,
                     }),
                     headers: {
                         'User-Agent': 'ChatangoJS',
                     }
-                }, (err, response, body) => {
+                }, function (err, response, body) {
                     if (err) {
-                        error(`Error while saving style for ${this.name}: ${err}`);
+                        error("Error while saving style for " + _this.name + ": " + err);
                         return reject(err);
                     }
                     if (response.statusCode !== 200) {
-                        error(`Error while saving style for ${this.name}: ${response.statusMessage}`);
-                        return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
+                        error("Error while saving style for " + _this.name + ": " + response.statusMessage);
+                        return reject(new Error(response.statusCode + ": " + response.statusMessage));
                     }
-                    log(`Saved style for ${this.name}`);
-                    resolve(this.style);
+                    log("Saved style for " + _this.name);
+                    resolve(_this.style);
                 });
             });
         });
-    }
-    getBackground() {
+    };
+    User.prototype.getBackground = function () {
+        var _this = this;
         if (this.is_inited) {
             return Promise.resolve(this.background);
         }
-        return this._inited.then(() => this.background);
-    }
-    _getBackground() {
-        debug(`Getting background for ${this.name}`);
-        return new Promise((resolve, reject) => {
-            request(`${this.ENDPOINT}/msgbg.xml`, (err, response, body) => {
+        return this._inited.then(function () { return _this.background; });
+    };
+    User.prototype._getBackground = function () {
+        var _this = this;
+        debug("Getting background for " + this.name);
+        return new Promise(function (resolve, reject) {
+            request(_this.ENDPOINT + "/msgbg.xml", function (err, response, body) {
                 if (err) {
-                    error(`Error while retrieving background for ${this.name}: ${err}`);
+                    error("Error while retrieving background for " + _this.name + ": " + err);
                     return reject(err);
                 }
                 if (response.statusCode !== 200) {
-                    error(`Error while retrieving background for ${this.name}: ${response.statusMessage}`);
-                    return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
+                    error("Error while retrieving background for " + _this.name + ": " + response.statusMessage);
+                    return reject(new Error(response.statusCode + ": " + response.statusMessage));
                 }
-                debug(`Retrieved background for ${this.name}`);
+                debug("Retrieved background for " + _this.name);
                 resolve(response);
             });
         })
-            .then((response) => {
-            debug(`Parsing background for ${this.name}`);
-            return new Promise((resolve, reject) => {
+            .then(function (response) {
+            debug("Parsing background for " + _this.name);
+            return new Promise(function (resolve, reject) {
                 if (response.headers['content-type'] === 'image/jpeg') {
-                    debug(`User ${this.name} has no background data. Using default.`);
+                    debug("User " + _this.name + " has no background data. Using default.");
                     return resolve(new Message_1.Background());
                 }
-                xml2js_1.parseString(response.body, (err, result) => {
+                xml2js_1.parseString(response.body, function (err, result) {
                     if (err) {
-                        error(`Error while parsing background for ${this.name}: ${err}`);
+                        error("Error while parsing background for " + _this.name + ": " + err);
                         return reject(err);
                     }
-                    debug(`Parsed background for ${this.name}`);
+                    debug("Parsed background for " + _this.name);
                     resolve(new Message_1.Background(result));
                 });
             });
         });
-    }
-    setBackground(background) {
-        return this._inited.then(() => {
-            debug(`Setting background for ${this.name}`);
-            lodash_1.assign(this.background, background);
+    };
+    User.prototype.setBackground = function (background) {
+        var _this = this;
+        return this._inited.then(function () {
+            debug("Setting background for " + _this.name);
+            lodash_1.assign(_this.background, background);
         });
-    }
-    saveBackground(background) {
+    };
+    User.prototype.saveBackground = function (background) {
+        var _this = this;
         if (this.type !== User.Types.Regi) {
-            throw new TypeError(`Tried to save background style as a non-registered User: ${this.name}`);
+            throw new TypeError("Tried to save background style as a non-registered User: " + this.name);
         }
-        return this.setBackground(background).then(() => {
-            debug(`Saving background for ${this.name}`);
-            return new Promise((resolve, reject) => {
+        return this.setBackground(background).then(function () {
+            debug("Saving background for " + _this.name);
+            return new Promise(function (resolve, reject) {
                 request({
                     url: 'http://chatango.com/updatemsgbg',
                     method: 'POST',
-                    jar: this._cookies,
+                    jar: _this._cookies,
                     form: lodash_1.assign({
-                        'lo': this.name,
-                        'p': this.password
-                    }, this.background),
+                        'lo': _this.name,
+                        'p': _this.password
+                    }, _this.background),
                     headers: {
                         'User-Agent': 'ChatangoJS'
                     }
-                }, (err, response, body) => {
+                }, function (err, response, body) {
                     if (err) {
-                        error(`Error while saving background for ${this.name}: ${err}`);
+                        error("Error while saving background for " + _this.name + ": " + err);
                         return reject(err);
                     }
                     if (response.statusCode !== 200) {
-                        error(`Error while saving background for ${this.name}: ${response.statusMessage}`);
-                        return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
+                        error("Error while saving background for " + _this.name + ": " + response.statusMessage);
+                        return reject(new Error(response.statusCode + ": " + response.statusMessage));
                     }
-                    log(`Saved background for ${this.name}`);
-                    resolve(this.background);
+                    log("Saved background for " + _this.name);
+                    resolve(_this.background);
                 });
             });
         });
-    }
-    saveBackgroundImage(stream) {
-        debug(`Saving background image for ${this.name}`);
-        return this._inited.then(() => {
-            return new Promise((resolve, reject) => {
+    };
+    User.prototype.saveBackgroundImage = function (stream) {
+        var _this = this;
+        debug("Saving background image for " + this.name);
+        return this._inited.then(function () {
+            return new Promise(function (resolve, reject) {
                 request({
                     url: 'http://chatango.com/updatemsgbg',
                     method: 'POST',
-                    jar: this._cookies,
+                    jar: _this._cookies,
                     headers: {
                         'User-Agent': 'ChatangoJS'
                     },
                     formData: {
-                        'lo': this.name,
-                        'p': this.password,
+                        'lo': _this.name,
+                        'p': _this.password,
                         'Filedata': stream
                     }
-                }, (err, response, body) => {
+                }, function (err, response, body) {
                     if (err) {
-                        error(`Error while saving background image for ${this.name}: ${err}`);
+                        error("Error while saving background image for " + _this.name + ": " + err);
                         return reject(err);
                     }
                     if (response.statusCode !== 200) {
-                        error(`Error while saving background for ${this.name}: ${response.statusMessage} => Are you authenticated?`);
-                        return reject(new Error(`${response.statusCode}: ${response.statusMessage}`));
+                        error("Error while saving background for " + _this.name + ": " + response.statusMessage + " => Are you authenticated?");
+                        return reject(new Error(response.statusCode + ": " + response.statusMessage));
                     }
-                    log(`Saved background image for ${this.name}`);
+                    log("Saved background image for " + _this.name);
                     resolve();
                 });
             });
         });
-    }
-    getBackgroundImage() {
-        return request(`${this.ENDPOINT}/msgbg.jpg`);
-    }
-    getAvatar() {
-        return request(`${this.ENDPOINT}/thumb.jpg`);
-    }
-    static getStyle(username) {
+    };
+    User.prototype.getBackgroundImage = function () {
+        return request(this.ENDPOINT + "/msgbg.jpg");
+    };
+    User.prototype.getAvatar = function () {
+        return request(this.ENDPOINT + "/thumb.jpg");
+    };
+    User.getStyle = function (username) {
         return new User(username)._getStyle();
-    }
-    static getBackground(username) {
+    };
+    User.getBackground = function (username) {
         return new User(username)._getBackground();
-    }
-    static getBackgroundImage(username) {
+    };
+    User.getBackgroundImage = function (username) {
         return new User(username).getBackgroundImage();
-    }
-    static getAvatar(username) {
+    };
+    User.getAvatar = function (username) {
         return new User(username).getAvatar();
-    }
-}
-User.Types = UserTypes;
+    };
+    User.Types = UserTypes;
+    return User;
+}(events_1.EventEmitter));
 exports.User = User;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = User;

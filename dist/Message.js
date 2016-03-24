@@ -1,15 +1,15 @@
 "use strict";
-const lodash_1 = require('lodash');
-class Message {
-    constructor() {
+var lodash_1 = require('lodash');
+var Message = (function () {
+    function Message() {
         this.style = new Style;
     }
-    toString() {
-        return `${this.user.toString()}: ${this.body}`;
-    }
-    static parse(raw) {
-        const message = new Message;
-        let [input, nameColor, fontSize, textColor, fontFamily, body] = raw.match(Message.tokens.MESSAGE_PARSE);
+    Message.prototype.toString = function () {
+        return this.user.toString() + ": " + this.body;
+    };
+    Message.parse = function (raw) {
+        var message = new Message;
+        var _a = raw.match(Message.tokens.MESSAGE_PARSE), input = _a[0], nameColor = _a[1], fontSize = _a[2], textColor = _a[3], fontFamily = _a[4], body = _a[5];
         if (nameColor)
             message.style.nameColor = nameColor;
         if (fontSize)
@@ -19,7 +19,7 @@ class Message {
         if (fontFamily)
             message.style.fontFamily = parseInt(fontFamily, 10);
         body = body.replace(/<br\/>/g, '\n');
-        let format;
+        var format;
         while (format = body.match(Message.tokens.FORMAT)) {
             switch (format[1]) {
                 case 'b':
@@ -37,15 +37,16 @@ class Message {
         body = lodash_1.unescape(body);
         message.body = body;
         return message;
-    }
-}
-Message.tokens = {
-    MESSAGE_PARSE: /^(?:<n(?:(?:\d{4})|((?:[a-fA-F0-9]{3}){1,2}))?\/>)?(?:<f x(\d{2})?((?:[a-fA-F0-9]{3}){1,2})?\=\"(\d+)?\">)?([\s\S]+)$/,
-    FORMAT: /(?:<([biu])>)([\s\S]+?)<\/\1>/
-};
+    };
+    Message.tokens = {
+        MESSAGE_PARSE: /^(?:<n(?:(?:\d{4})|((?:[a-fA-F0-9]{3}){1,2}))?\/>)?(?:<f x(\d{2})?((?:[a-fA-F0-9]{3}){1,2})?\=\"(\d+)?\">)?([\s\S]+)$/,
+        FORMAT: /(?:<([biu])>)([\s\S]+?)<\/\1>/
+    };
+    return Message;
+}());
 exports.Message = Message;
-class Style {
-    constructor(args) {
+var Style = (function () {
+    function Style(args) {
         if (args !== undefined) {
             this.stylesOn = args.stylesOn;
             this.fontFamily = parseInt(args.fontFamily, 10);
@@ -58,7 +59,8 @@ class Style {
             this.underline = args.underline;
         }
     }
-}
+    return Style;
+}());
 exports.Style = Style;
 Style.prototype.stylesOn = false;
 Style.prototype.fontFamily = 0;
@@ -69,8 +71,8 @@ Style.prototype.nameColor = '000000';
 Style.prototype.bold = false;
 Style.prototype.italics = false;
 Style.prototype.underline = false;
-class Background {
-    constructor(args) {
+var Background = (function () {
+    function Background(args) {
         if (args !== void 0) {
             this.align = args.bgi.$.align;
             this.ialp = parseInt(args.bgi.$.ialp, 10);
@@ -82,7 +84,8 @@ class Background {
             this.isvid = parseInt(args.bgi.$.isvid, 10);
         }
     }
-}
+    return Background;
+}());
 exports.Background = Background;
 Background.prototype.align = 'tl';
 Background.prototype.ialp = 100;
@@ -104,17 +107,17 @@ Background.prototype.isvid = 0;
     Font[Font["Typewriter"] = 8] = "Typewriter";
 })(exports.Font || (exports.Font = {}));
 var Font = exports.Font;
-class MessageCache {
-    constructor(options) {
+var MessageCache = (function () {
+    function MessageCache(options) {
         this._pending = {};
         this._cache = [];
         this._dict = {};
         lodash_1.assign(this, MessageCache.DEFAULT_OPTIONS, options);
     }
-    toString() {
+    MessageCache.prototype.toString = function () {
         return this._cache.toString();
-    }
-    _push(message, new_id) {
+    };
+    MessageCache.prototype._push = function (message, new_id) {
         delete this._pending[message.id];
         message.id = new_id;
         this._dict[new_id] = message;
@@ -123,17 +126,17 @@ class MessageCache {
             var old = this._cache.shift();
             delete this._dict[old.id];
         }
-    }
-    get(id) {
+    };
+    MessageCache.prototype.get = function (id) {
         if (typeof id === 'number') {
             return this._cache[id];
         }
         return this._dict[id];
-    }
-    getLast() {
+    };
+    MessageCache.prototype.getLast = function () {
         return this._cache[this._cache.length];
-    }
-    submit(message) {
+    };
+    MessageCache.prototype.submit = function (message) {
         var new_id = this._pending[message.id];
         if (new_id === void 0) {
             this._pending[message.id] = message;
@@ -141,8 +144,8 @@ class MessageCache {
         }
         this._push(message, new_id);
         return message;
-    }
-    publish(id, new_id) {
+    };
+    MessageCache.prototype.publish = function (id, new_id) {
         var message = this._pending[id];
         if (message === void 0) {
             this._pending[id] = new_id;
@@ -150,8 +153,8 @@ class MessageCache {
         }
         this._push(message, new_id);
         return message;
-    }
-    remove(id) {
+    };
+    MessageCache.prototype.remove = function (id) {
         var message = this._dict[id];
         if (message === void 0) {
             return void 0;
@@ -159,11 +162,12 @@ class MessageCache {
         delete this._dict[id];
         this._cache.splice(this._cache.indexOf(message), 1);
         return message;
-    }
-}
-MessageCache.DEFAULT_OPTIONS = {
-    size: 100,
-};
+    };
+    MessageCache.DEFAULT_OPTIONS = {
+        size: 100,
+    };
+    return MessageCache;
+}());
 exports.MessageCache = MessageCache;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = Message;
