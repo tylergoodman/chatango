@@ -12,7 +12,7 @@ const User_1 = require('./User');
 const Message_1 = require('./Message');
 ;
 class Room extends events_1.EventEmitter {
-    constructor(name, user = new User_1.default(), options) {
+    constructor(name, user, options) {
         super();
         this.moderators = new Set();
         this.users = new Map();
@@ -20,6 +20,9 @@ class Room extends events_1.EventEmitter {
         this._first_send = true;
         this._disconnecting = false;
         this._connecting = false;
+        if (user === undefined) {
+            user = new User_1.default();
+        }
         this.name = name;
         this.user = user;
         this.hostname = Room.getHostname(this.name);

@@ -208,8 +208,12 @@ export class Room extends EventEmitter implements RoomOptions {
     throw new Error(err_message);
   }
 
-  constructor(name: string, user: User = new User(), options?: RoomOptions) {
+  constructor(name: string, user?: User, options?: RoomOptions) {
     super();
+
+    if (user === undefined) {
+      user = new User();
+    }
 
     this.name = name;
     this.user = user;
