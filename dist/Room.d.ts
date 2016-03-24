@@ -54,6 +54,7 @@ export declare class Room extends EventEmitter implements RoomOptions {
     private _userlist_get();
     private _auth();
     private _join();
+    private _find_user_by_id(connection_id);
     connect(port?: number, connectListener?: Function): Promise<Room>;
     disconnect(): Promise<Room>;
     message(content: string): Room;

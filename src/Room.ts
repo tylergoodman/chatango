@@ -447,6 +447,17 @@ export class Room extends EventEmitter implements RoomOptions {
     });
   }
 
+  private _find_user_by_id(connection_id: string): User {
+    for (const user of this.users.values()) {
+      for (const id of user._connection_ids) {
+        if (id === connection_id) {
+          return user;
+        }
+      }
+    }
+    return undefined;
+  }
+
   /**
   * End of private methods
   */
@@ -841,6 +852,12 @@ export class Room extends EventEmitter implements RoomOptions {
    * @fires leave
    */
   __command__participant(status: string, connection_id: string, session_id: string, user_registered: string, user_temporary: string, no_idea: string, joined_at: string): void {
+    function addUser() {
+
+    }
+    function removeUser() {
+
+    }
     // get the name
     let name: string;
     let type: UserTypes;
@@ -861,8 +878,30 @@ export class Room extends EventEmitter implements RoomOptions {
       type = User.Types.Regi;
     }
     let user = this.users.get(name.toLowerCase());
+    // name change, either a login or logout
+    if (status === '2') {
+      // remove old user
+      let old_user = this._find_user_by_id(connection_id);
+      old_user._connection_ids.delete(connection_id);
+      if (old_user._connection_ids.size === 0) {
+        this.users.delete(old_user.name);
+        log(`User ${old_user} left room ${this.identifier}`);
+        this.emit('leave', old_user);
+      }
+      // add new user
+      if (user === undefined) { // logging in to a user that isn't in the room already, or logging out
+        user = new User(name, type);
+        this.users.set(user.name, user);
+      }
+      user._connection_ids.add(connection_id);
+      user.joined_at = parseFloat(joined_at);
+      if (user._connection_ids.size === 1) {
+        log(`User ${user} joined room ${this.identifier}`);
+        this.emit('join', user);
+      }
+    }
     // join
-    if (status === '1') {
+    else if (status === '1') {
       if (user === undefined) {
         user = new User(name, type);
         this.users.set(user.name, user);
@@ -875,13 +914,16 @@ export class Room extends EventEmitter implements RoomOptions {
       }
     }
     // leave
-    else {
+    else if (status === '0') {
       user._connection_ids.delete(connection_id);
       if (user._connection_ids.size === 0) {
         this.users.delete(user.name);
         log(`User ${user} left room ${this.identifier}`);
         this.emit('leave', user);
       }
+    }
+    else {
+      error(`Unknown __participant__ status: ${status} --- ${Array.prototype.join.call(arguments, ':')}`);
     }
   }
 
