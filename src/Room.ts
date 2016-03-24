@@ -208,12 +208,8 @@ export class Room extends EventEmitter implements RoomOptions {
     throw new Error(err_message);
   }
 
-  constructor(name: string, user?: User, options?: RoomOptions) {
+  constructor(name: string, user: User = new User(), options?: RoomOptions) {
     super();
-
-    if (user === undefined) {
-      user = new User();
-    }
 
     this.name = name;
     this.user = user;
@@ -452,8 +448,10 @@ export class Room extends EventEmitter implements RoomOptions {
   }
 
   private _find_user_by_id(connection_id: string): User {
-    for (const user of this.users.values()) {
-      for (const id of user._connection_ids) {
+    for (let iter = this.users.values(), i = iter.next(); i.done === false; i = iter.next()) { // ES5 iterator iterating...
+      const user = i.value;
+      for (let iter = user._connection_ids.values(), i = iter.next(); i.done === false; i = iter.next()) {
+        const id = i.value;
         if (id === connection_id) {
           return user;
         }
