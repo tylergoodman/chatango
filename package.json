@@ -1,16 +1,16 @@
 {
   "name": "chatango",
-  "version": "3.0.2",
+  "version": "4.0.0",
   "description": "unofficial library for interacting with Chatango.com",
   "private": true,
-  "main": "./dist/index.js",
-  "typings": "./dist/index.d.ts",
+  "main": "./lib/index.js",
+  "typings": "./lib/index.d.ts",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "mocha --colors --bail --timeout 10000",
-    "build": "rm -rf ./dist && mkdir dist && tsc"
+    "test": "mocha --require should --colors --bail --timeout 10000 --recursive lib/test/**/*.test.js",
+    "build": "rm -rf lib && tsc"
   },
   "repository": {
     "type": "git",
@@ -19,19 +19,32 @@
   "bugs": {
     "url": "https://github.com/tylergoodman/chatango/issues"
   },
+  "engines": {
+    "node": "^8.5.0"
+  },
   "homepage": "https://github.com/tylergoodman/chatango",
   "dependencies": {
-    "bluebird": "^3.3.1",
-    "debug": "^2.2.0",
-    "lodash": "^4.5.0",
-    "request": "^2.69.0",
-    "xml2js": "^0.4.16"
+    "bluebird": "^3.5.1",
+    "debug": "^3.1.0",
+    "lodash": "^4.17.4",
+    "node-fetch": "^1.7.3",
+    "xml2js": "^0.4.19"
   },
   "devDependencies": {
-    "dotenv": "^2.0.0",
-    "faker": "^3.0.1",
-    "mocha": "^2.4.5",
-    "should": "^8.2.2",
-    "typescript": "^1.9.0-dev.20160221"
+    "@types/bluebird": "^3.5.15",
+    "@types/debug": "0.0.30",
+    "@types/dotenv": "^4.0.1",
+    "@types/faker": "^4.1.1",
+    "@types/lodash": "^4.14.77",
+    "@types/mocha": "^2.2.43",
+    "@types/node": "^8.0.34",
+    "@types/node-fetch": "^1.6.7",
+    "@types/should": "^11.2.0",
+    "@types/xml2js": "^0.4.0",
+    "dotenv": "^4.0.0",
+    "faker": "^4.1.0",
+    "mocha": "^4.0.1",
+    "should": "^13.1.2",
+    "typescript": "^2.5.3"
   }
 }
